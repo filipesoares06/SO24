@@ -4,3 +4,8 @@ bool validateMobileUser(char *inputMobileUser[]) {   //Método responsável por 
     bool validateId;
     
 }
+
+void backOfficeUserCommands() {   //Método responsável por imprimir os comandos disponíveis no processo BackOfficeUser.
+    printf("\ndata_stats");
+    printf("\nreset\n");
+}

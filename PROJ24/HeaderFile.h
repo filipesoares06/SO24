@@ -26,5 +26,6 @@ void initializeLogFile();
 void writeLogFile(char *strMessage);
 int readConfigFile(char *fileName);
 bool validateMobileUser(char *inputMobileUser[]);
+void backOfficeUserCommands();
 
 #endif

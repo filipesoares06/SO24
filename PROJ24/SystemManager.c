@@ -141,6 +141,16 @@ int readConfigFile(char *fileName) {   //Método responsável por ler o ficheiro
     return 1;
 }
 
+void createProcess(void (*functionProcess) (void*), void *args) {   //Método responsável por criar um novo processo.
+    if (fork() == 0) {   //Cria um novo processo. Se a função fork() returnar 0, todo o código neste bloco será executado no processo filho.
+        if (args)   //Verifica se a função possui argumentos.
+            functionProcess(args);
+
+        else
+            functionProcess(NULL);
+    }
+}
+
 int main(int argc, char *argv[]) {
     if (argc != 2) {
         fprintf(stderr, "5g_auth_platform {config-file}");
