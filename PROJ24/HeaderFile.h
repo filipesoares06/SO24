@@ -2,10 +2,13 @@
 #define HEADER_FILE_H
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <stdbool.h>
 #include <time.h>
 #include <semaphore.h>
 #include <fcntl.h>
+#include <unistd.h>   //fork()
+#include <string.h>
 
 int queuePos;   //Variáveis que representam os valores do ficheiro de configurações.
 int maxAuthServers;
@@ -25,7 +28,7 @@ typedef struct mobileUser {   //Estrutura que representa o Mobile User.
 void initializeLogFile();
 void writeLogFile(char *strMessage);
 int readConfigFile(char *fileName);
-bool validateMobileUser(char *inputMobileUser[]);
+//bool validateMobileUser(char *inputMobileUser[]);
 void backOfficeUserCommands();
 
 #endif

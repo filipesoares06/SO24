@@ -3,15 +3,22 @@ FLAGS = -g -pthread -lrt -Wall
 OBJS = Functions.c HeaderFile.h
 MAIN = SystemManager.c
 MOBILEUSER = MobileUser.c
-TARGET = system
-TARGET2 = mobileuser
-LOG = ./files/log.txt
+BACKOFFICEUSER = BackOfficeUser.c
+TARGET = 5g_auth_platform
+TARGET2 = mobile_user
+TARGET3 = backoffice_user
+LOG = ./files/logFile.txt
 
-all: $(TARGET)
+all: $(TARGET) $(TARGET2) $(TARGET3)
 
-$(TARGET): $(OBJS)
-		$(CC) $(FLAGS) $(MAIN) $(OBJS) -g -o  $(TARGET) -lrt
-		$(CC) $(FLAGS) $(MOBILEUSER) $(OBJS) -g -o $(TARGET2) -lrt
-		
+$(TARGET): $(OBJS) $(MAIN)
+	$(CC) $(FLAGS) $(MAIN) $(OBJS) -o $(TARGET) -lrt
+
+$(TARGET2): $(OBJS) $(MOBILEUSER)
+	$(CC) $(FLAGS) $(MOBILEUSER) $(OBJS) -o $(TARGET2) -lrt
+
+$(TARGET3): $(OBJS) $(BACKOFFICEUSER)
+	$(CC) $(FLAGS) $(BACKOFFICEUSER) $(OBJS) -o $(TARGET3) -lrt
+
 clean:
-	$(RM) $(TARGET) $(TARGET2) $(LOG)
+	rm -f $(TARGET) $(TARGET2) $(TARGET3) $(LOG)
