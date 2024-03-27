@@ -7,25 +7,41 @@ int main(int argc, char *argv[]) {
         return -1;
     }
 
-    char commandInput[100];
-    int backOfficeUserId = 1;   //O identificador a utilizar é sempre 1.
-
     backOfficeUserCommands();   //Imprime os comandos disponíveis. Tirar?
+
+    char commandInput[100];
 
     while (true) {
         fgets(commandInput, sizeof(commandInput), stdin);
-
-        int verifyId;
         char *verifyInput;
-        verifyInput = strtok(commandInput, "#");
+        int backOfficeUserId;
+        char inputCommands[100];
 
-        verifyId = atoi(verifyInput);
-        
+        verifyInput = strtok(commandInput, "#");
+        backOfficeUserId = atoi(verifyInput);
+
         while (verifyInput != NULL) {
-            printf("%s\n", verifyInput);
+            strcpy(inputCommands, verifyInput);
             verifyInput = strtok(NULL, "#");
         }
 
+        if (backOfficeUserId != 1) {
+            printf("Invalid Id!\n");
+        }
+
+        else if (strcmp(inputCommands, "data_stats") != 0 && strcmp(inputCommands, "reset") != 0) {
+            printf("Invalid Command!\n");
+        }
+
+        else {
+            if (strcmp(inputCommands, "data_stats")) {
+                printf("Service     Total Data     Auth Reqs\n");
+            }
+
+            else if (strcmp(inputCommands, "reset")) {
+                printf("Reseting\n");
+            }
+        }
     }
 
     return 0;
