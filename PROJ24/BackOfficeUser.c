@@ -26,20 +26,20 @@ int main(int argc, char *argv[]) {
         }
 
         if (backOfficeUserId != 1) {
-            printf("Invalid Id!\n");
+            writeLogFile("Invalid Id!\n");
         }
 
-        else if (strcmp(inputCommands, "data_stats") != 0 && strcmp(inputCommands, "reset") != 0) {
-            printf("Invalid Command!\n");
+        else if (strcmp(inputCommands, "data_stats\n") != 0 && strcmp(inputCommands, "reset\n") != 0) {
+            writeLogFile("Invalid Command!\n");
         }
 
         else {
-            if (strcmp(inputCommands, "data_stats")) {
-                printf("Service     Total Data     Auth Reqs\n");
+            if (strcmp(inputCommands, "data_stats\n") == 0) {
+                writeLogFile("Service     Total Data     Auth Reqs\n");
             }
 
-            else if (strcmp(inputCommands, "reset")) {
-                printf("Reseting\n");
+            else if (strcmp(inputCommands, "reset\n") == 0) {
+                writeLogFile("Reseting\n");
             }
         }
     }

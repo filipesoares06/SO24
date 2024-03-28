@@ -30,7 +30,7 @@ int main(int argc, char *argv[]) {
     char registerMessageStr[100];
 
     snprintf(registerMessageStr, sizeof(registerMessageStr), "%d#%d", mobileUserId, inicialPlafond);
-    printf("%s", registerMessageStr);
+    writeLogFile(registerMessageStr);
 
     //Enviar informação no named pipe.
 

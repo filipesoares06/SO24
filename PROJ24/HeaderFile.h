@@ -9,12 +9,14 @@
 #include <fcntl.h>
 #include <unistd.h>   //fork()
 #include <string.h>
+#include <sys/ipc.h>   //Shared memory.
+#include <sys/shm.h>
 
-int queuePos;   //Variáveis que representam os valores do ficheiro de configurações.
+/*int queuePos;   //Variáveis que representam os valores do ficheiro de configurações.
 int maxAuthServers;
 int authProcTime;
 int maxVideoWait;
-int maxOthersWait;
+int maxOthersWait;*/
 
 typedef struct mobileUser {   //Estrutura que representa o Mobile User.
     int inicialPlafond;
@@ -25,10 +27,25 @@ typedef struct mobileUser {   //Estrutura que representa o Mobile User.
     int reservedData;
 } mobileUser;
 
+typedef struct sharedMemory {
+    mobileUser *mobileUsers;
+
+    int queuePos;   //Variáveis que representam os valores do ficheiro de configurações.
+    int maxAuthServers;
+    int authProcTime;
+    int maxVideoWait;
+    int maxOthersWait;
+} sharedMemory;
+
+int shmId;
+sharedMemory* shMemory;
+
 void initializeLogFile();
 void writeLogFile(char *strMessage);
 int readConfigFile(char *fileName);
-//bool validateMobileUser(char *inputMobileUser[]);
 void backOfficeUserCommands();
+int createSharedMemory(int shmSize);
+sharedMemory* attatchSharedMemory(int shmId);
+void initializeSharedMemory();
 
 #endif
