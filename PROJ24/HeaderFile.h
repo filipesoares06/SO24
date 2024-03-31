@@ -50,6 +50,6 @@ sharedMemory* attatchSharedMemory(int shmId);
 void initializeSharedMemory();
 
 void receiver_func();
-void sender_func()
+void sender_func();
 
 #endif
