@@ -6,6 +6,7 @@
 #include <stdbool.h>
 #include <time.h>
 #include <semaphore.h>
+#include <pthread.h>
 #include <fcntl.h>
 #include <unistd.h>   //fork()
 #include <string.h>
@@ -47,5 +48,8 @@ void backOfficeUserCommands();
 int createSharedMemory(int shmSize);
 sharedMemory* attatchSharedMemory(int shmId);
 void initializeSharedMemory();
+
+void receiver_func();
+void sender_func()
 
 #endif

@@ -192,8 +192,14 @@ void createProcess(void (*functionProcess) (void*), void *args) {   //Método re
 
 void authorizationRequestManager() {   //Método responsável por criar o processo Authorization Request Manager.
     writeLogFile("PROCESS AUTHORIZATION_REQUEST_MANAGER CREATED");
+    
+    pthread_t receiver_id, sender_id;
 
-    //Criar as threads Receiver e Sender.
+    pthread_create(&receiver_id, NULL, receiver_func, NULL);
+    pthread_create(&sender_id, NULL, sender_func, NULL);
+
+    pthread_join(receiver_id, NULL);
+    pthread_join(sender_id, NULL);
 }
 
 void monitorEngine() {   //Método responsável por criar o processo Monitor Engine.
