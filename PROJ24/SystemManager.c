@@ -49,12 +49,26 @@ int readConfigFile(char *fileName) {   //Método responsável por ler o ficheiro
     }
 
     while ((readLine = getline(&strLine, &len, configFile)) != -1) {
-        if (lineId > 5) {
+        if (lineId > 6) {
             break;
         }
         
         switch (lineId) {
             case (0):
+                number = atoi(strLine);
+
+                if (number < 0) {
+                    writeLogFile("[SYSTEM] Number of Mobile Users is too low.");
+
+                    return -1;
+                }
+
+                shMemory -> n_users = number;
+                lineId++;
+                
+                break;
+
+            case (1):
                 number = atoi(strLine);
 
                 if (number < 0) {
@@ -68,7 +82,7 @@ int readConfigFile(char *fileName) {   //Método responsável por ler o ficheiro
                 
                 break;
             
-            case (1):
+            case (2):
                 number = atoi(strLine);
 
                 if (number < 1) {
@@ -82,7 +96,7 @@ int readConfigFile(char *fileName) {   //Método responsável por ler o ficheiro
 
                 break;
 
-            case (2):
+            case (3):
                 number = atoi(strLine);
 
                 if (number < 0) {
@@ -96,7 +110,7 @@ int readConfigFile(char *fileName) {   //Método responsável por ler o ficheiro
 
                 break;
 
-            case (3):
+            case (4):
                 number = atoi(strLine);
                 
                 if (number < 1) {
@@ -110,7 +124,7 @@ int readConfigFile(char *fileName) {   //Método responsável por ler o ficheiro
                 
                 break;
 
-            case (4):
+            case (5):
                 number = atoi(strLine);
 
                 if (number < 1) {
@@ -171,6 +185,7 @@ void initializeSharedMemory() {   //Método responsável por inicializar a memó
     shmId = createSharedMemory(shmSize);
     shMemory = attatchSharedMemory(shmId);
 
+    shMemory -> n_users = 0; // TODO make ll size of n_users
     shMemory -> queuePos = 0;
     shMemory -> maxAuthServers = 0;
     shMemory -> authProcTime = 0;
@@ -192,7 +207,7 @@ void createProcess(void (*functionProcess) (void*), void *args) {   //Método re
 
 void authorizationRequestManager() {   //Método responsável por criar o processo Authorization Request Manager.
     writeLogFile("PROCESS AUTHORIZATION_REQUEST_MANAGER CREATED");
-    
+
     pthread_t receiver_id, sender_id;
 
     pthread_create(&receiver_id, NULL, receiver_func, NULL);

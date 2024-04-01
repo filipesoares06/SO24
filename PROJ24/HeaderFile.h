@@ -31,6 +31,7 @@ typedef struct mobileUser {   //Estrutura que representa o Mobile User.
 typedef struct sharedMemory {
     mobileUser *mobileUsers;
 
+    int n_users;
     int queuePos;   //Variáveis que representam os valores do ficheiro de configurações.
     int maxAuthServers;
     int authProcTime;
