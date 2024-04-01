@@ -63,7 +63,7 @@ int readConfigFile(char *fileName) {   //Método responsável por ler o ficheiro
                     return -1;
                 }
 
-                shMemory -> n_users = number;
+                initializeSharedMemory(number);
                 lineId++;
                 
                 break;
@@ -179,13 +179,12 @@ sharedMemory* attatchSharedMemory(int shmId) {   //Método responsável por atri
     return shmAddr;
 }
 
-void initializeSharedMemory() {   //Método responsável por inicializar a memória partilhada.
-    size_t shmSize = sizeof(shMemory) + sizeof(mobileUser) + 1;   //Ver.
+void initializeSharedMemory(int n_users) {   //Método responsável por inicializar a memória partilhada.
+    size_t shmSize = sizeof(shMemory) + sizeof(mobileUser) * n_users + 1;   //TODO alterei a formula, vê se está bem. 
 
     shmId = createSharedMemory(shmSize);
     shMemory = attatchSharedMemory(shmId);
 
-    shMemory -> n_users = 0; // TODO make ll size of n_users
     shMemory -> queuePos = 0;
     shMemory -> maxAuthServers = 0;
     shMemory -> authProcTime = 0;
@@ -231,7 +230,7 @@ int main(int argc, char *argv[]) {
     initializeMutexSemaphore();
     initializeLogFile();
 
-    initializeSharedMemory();
+    // initializeSharedMemory();
 
     readConfigFile(argv[1]);   //Lê o ficheiro de configurações passado como parâmetro.
 
