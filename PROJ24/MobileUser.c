@@ -45,7 +45,10 @@ int main(int argc, char *argv[]) {
     clock_gettime(CLOCK_MONOTONIC, &last_time);
 
     char* services[3] = {"VIDEO", "SOCIAL", "MUSIC"};
-    while (true) {   //Gerar mensagens e posteriormente enviar para o named pipe.
+
+    //Gerar mensagens e posteriormente enviar para o named pipe.
+    int request_counter = 0;
+    while (request_counter < numAuthRequests) {  // TODO será que deviamos ir buscar o numero de authrequests maximo à shMemory? e podemos atualizar esse valor com --?
         char authOrderStr[100];
 
         clock_gettime(CLOCK_MONOTONIC, &current_time);
@@ -55,13 +58,13 @@ int main(int argc, char *argv[]) {
 
         // Update the service type based on elapsed time
         const char *service;
-        if (elapsed_ms >= 20) {
+        if (elapsed_ms >= musicInterval) {
             service = services[2]; // MUSIC
             last_time = current_time;
-        } else if (elapsed_ms >= 10) {
+        } else if (elapsed_ms >= socialInterval) {
             service = services[1]; // SOCIAL
             last_time = current_time;
-        } else if (elapsed_ms >= 5) {
+        } else if (elapsed_ms >= videoInterval) {
             service = services[0]; // VIDEO
             last_time = current_time;
         } else {

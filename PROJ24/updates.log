@@ -2,3 +2,7 @@
     - os paths para os pipes estão definidos mas podem causar problemas
     - criei o user_pipe e o user já está a escrever no pipe
     - o auth manager tem acesso de leitura mas ainda não faz nada
+
+[macedo 15/04 2009] -----------------
+    - alterei os intervalos de tempo para os valores que sao recebidos
+    - tambem verifica o numero de requests que pode fazer (ver comentario)
