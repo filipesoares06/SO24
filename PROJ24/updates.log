@@ -1,0 +1,4 @@
+[macedo 15/04 2001] -----------------
+    - os paths para os pipes estão definidos mas podem causar problemas
+    - criei o user_pipe e o user já está a escrever no pipe
+    - o auth manager tem acesso de leitura mas ainda não faz nada

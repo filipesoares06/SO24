@@ -13,6 +13,9 @@
 #include <sys/ipc.h>   //Shared memory.
 #include <sys/shm.h>
 
+#define USER_PIPE "/tmp/userpipe"
+#define BACK_PIPE "/tmp/backpipe"
+
 /*int queuePos;   //Variáveis que representam os valores do ficheiro de configurações.
 int maxAuthServers;
 int authProcTime;
@@ -20,6 +23,7 @@ int maxVideoWait;
 int maxOthersWait;*/
 
 typedef struct mobileUser {   //Estrutura que representa o Mobile User.
+    int user_id;
     int inicialPlafond;
     int numAuthRequests;
     int videoInterval;
@@ -51,5 +55,6 @@ void initializeSharedMemory();
 
 void receiver_func();
 void sender_func();
+int random_number(int min, int max);
 
 #endif

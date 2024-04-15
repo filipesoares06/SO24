@@ -212,6 +212,14 @@ void authorizationRequestManager() {   //Método responsável por criar o proces
     pthread_create(&receiver_id, NULL, receiver_func, NULL);
     pthread_create(&sender_id, NULL, sender_func, NULL);
 
+    int fd = mkfifo(USER_PIPE, O_RDONLY);
+    if(fd == -1){
+        perror("Error while opening user_pipe");
+        writeLogFile("[ARM] Error while opening user_pipe");
+        exit(1);
+    }
+
+    close(fd);
     pthread_join(receiver_id, NULL);
     pthread_join(sender_id, NULL);
 }

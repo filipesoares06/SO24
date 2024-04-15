@@ -18,3 +18,7 @@ void sender_func(){
     printf("Receiver called\n");
     fflush(stdout);
 }
+
+int random_number(int min, int max) {
+    return min + rand() / (RAND_MAX / (max - min + 1) + 1);
+}
