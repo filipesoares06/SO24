@@ -22,3 +22,16 @@ void sender_func(){
 int random_number(int min, int max) {
     return min + rand() / (RAND_MAX / (max - min + 1) + 1);
 }
+
+void sigint(int signum)
+{
+    write_log("SIGNAL SIGINT RECEIVED");
+    write_log("SIMULATOR WAITING FOR LAST TASKS TO FINISH");
+
+    for (int i = 0; i < 4; i++)
+        wait(NULL); // espera que os processos acabem e, depois, limpa os recursos.
+
+    // TODO clean resources function
+
+    exit(0);
+}

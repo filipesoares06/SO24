@@ -1,6 +1,8 @@
 #include "HeaderFile.h"
 
 int main(int argc, char *argv[]) {
+    signal(SIGINT, sigint);
+
     int inicialPlafond;
     int numAuthRequests;
     int videoInterval;

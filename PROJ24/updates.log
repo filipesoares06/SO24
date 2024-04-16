@@ -6,3 +6,7 @@
 [macedo 15/04 2009] -----------------
     - alterei os intervalos de tempo para os valores que sao recebidos
     - tambem verifica o numero de requests que pode fazer (ver comentario)
+
+[macedo 16/04 1445] -----------------
+    - adicionei a função de sigint e os catches no backofficeuser, mobileuser e systemmanager
+    - TODO a função sigint não tem a limpeza dos recursos ainda

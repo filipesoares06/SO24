@@ -1,6 +1,8 @@
 #include "HeaderFile.h"
 
 int main(int argc, char *argv[]) {
+    signal(SIGINT, sigint);
+
     if (argc != 1) {
         fprintf(stderr, "backoffice_user");
 

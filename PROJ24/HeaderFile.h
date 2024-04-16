@@ -57,4 +57,6 @@ void receiver_func();
 void sender_func();
 int random_number(int min, int max);
 
+void sigint(int signum);
+
 #endif

@@ -229,6 +229,8 @@ void monitorEngine() {   //Método responsável por criar o processo Monitor Eng
 }
 
 int main(int argc, char *argv[]) {
+    signal(SIGINT, sigint);
+
     if (argc != 2) {
         fprintf(stderr, "5g_auth_platform {config-file}");
 
