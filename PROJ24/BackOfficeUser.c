@@ -37,11 +37,41 @@ int main(int argc, char *argv[]) {
 
         else {
             if (strcmp(inputCommands, "data_stats\n") == 0) {
-                writeLogFile("Service     Total Data     Auth Reqs\n");
+                // writeLogFile("Service     Total Data     Auth Reqs\n");
+
+                int fd = mkfifo(BACK_PIPE, O_WRONLY);
+                if(fd == -1){
+                    perror("Error while opening back_pipe");
+                    writeLogFile("[BOU] Error while opening back_pipe");
+                    exit(1);
+                }
+
+                char msg[24]; // TODO is size enough?
+                snprintf(msg, sizeof(msg), "%d#data_stats", backOfficeUserId);
+
+                write(fd, msg, strlen(msg) + 1);
+
+                close(fd); 
+                
+                // TODO ler estatisticas da message queue
             }
 
             else if (strcmp(inputCommands, "reset\n") == 0) {
-                writeLogFile("Reseting\n");
+                // writeLogFile("Reseting\n");
+
+                int fd = mkfifo(BACK_PIPE, O_WRONLY);
+                if(fd == -1){
+                    perror("Error while opening back_pipe");
+                    writeLogFile("[BOU] Error while opening back_pipe");
+                    exit(1);
+                }
+
+                char msg[24]; // TODO is size enough?
+                snprintf(msg, sizeof(msg), "%d#reset", backOfficeUserId);
+
+                write(fd, msg, strlen(msg) + 1);
+
+                close(fd);
             }
         }
     }

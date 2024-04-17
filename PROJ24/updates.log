@@ -10,3 +10,6 @@
 [macedo 16/04 1445] -----------------
     - adicionei a função de sigint e os catches no backofficeuser, mobileuser e systemmanager
     - TODO a função sigint não tem a limpeza dos recursos ainda
+
+[macedo 17/04 0135] -----------------
+    - backofficeuser agora envia os comandos pelo back_pipe
