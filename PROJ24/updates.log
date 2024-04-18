@@ -13,3 +13,7 @@
 
 [macedo 17/04 0135] -----------------
     - backofficeuser agora envia os comandos pelo back_pipe
+
+[macedo 18/04 0151] -----------------
+    - monitor engine checka os plafonds e cria avisos, mas nao sei se está bem feito
+    - acho que fiz mais qqr cena mas n me lembro tbh

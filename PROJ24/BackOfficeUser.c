@@ -54,6 +54,7 @@ int main(int argc, char *argv[]) {
                 close(fd); 
                 
                 // TODO ler estatisticas da message queue
+                
             }
 
             else if (strcmp(inputCommands, "reset\n") == 0) {

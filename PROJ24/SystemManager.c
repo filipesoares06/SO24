@@ -190,6 +190,7 @@ void initializeSharedMemory(int n_users) {   //Método responsável por iniciali
     shMemory -> authProcTime = 0;
     shMemory -> maxVideoWait = 0;
     shMemory -> maxOthersWait = 0;
+    shMemory -> n_users = n_users;
 
     writeLogFile("SHARED MEMORY INITIALIZED");
 }
@@ -225,7 +226,31 @@ void authorizationRequestManager() {   //Método responsável por criar o proces
 }
 
 void monitorEngine() {   //Método responsável por criar o processo Monitor Engine.
+    // TODO create process
+    // TODO not sure if this is done correctly tbh how often does it have to check the data?
 
+    for(int i = 0; i < shMemory->n_users; i++){
+        char* alert[40];
+        mobileUser* user = &(shMemory->mobileUsers[i]);
+        int currentUsage = user->usedData;
+        int initialPlafond = user->inicialPlafond;
+
+        // TODO escrever no log ou enviar para algum lado ig
+        if((currentUsage / initialPlafond) >= 0.8 && (currentUsage / initialPlafond) < 0.9){
+            snprintf(alert, sizeof(alert), "USER %d REACHED 80% of DATA USAGE\n", user->user_id);
+        }
+
+        if((currentUsage / initialPlafond) >= 0.9 && (currentUsage / initialPlafond) < 1.0){
+            snprintf(alert, sizeof(alert), "USER %d REACHED 90% of DATA USAGE\n", user->user_id);
+        }
+
+        if(currentUsage == initialPlafond){
+            snprintf(alert, sizeof(alert), "USER %d REACHED 100% of DATA USAGE\n", user->user_id);
+        }
+
+    }
+
+    sleep(30);
 }
 
 int main(int argc, char *argv[]) {

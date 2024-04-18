@@ -30,6 +30,7 @@ typedef struct mobileUser {   //Estrutura que representa o Mobile User.
     int musicInterval;
     int socialInterval;
     int reservedData;
+    int usedData;
 } mobileUser;
 
 typedef struct sharedMemory {
@@ -40,6 +41,7 @@ typedef struct sharedMemory {
     int authProcTime;
     int maxVideoWait;
     int maxOthersWait;
+    int n_users;
 } sharedMemory;
 
 int shmId;
