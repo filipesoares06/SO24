@@ -16,4 +16,6 @@
 
 [macedo 18/04 0151] -----------------
     - monitor engine checka os plafonds e cria avisos, mas nao sei se está bem feito
-    - acho que fiz mais qqr cena mas n me lembro tbh
+    - criei a variavel usedData no mobileUser para ter acesso aos dados que ele ja usou
+    - tambem adicionei o numero de users na sharedmemory
+    - TODO por semaforos para aceder à sharedmemory

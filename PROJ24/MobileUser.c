@@ -53,6 +53,8 @@ int main(int argc, char *argv[]) {
     while (request_counter < numAuthRequests) {  // TODO será que deviamos ir buscar o numero de authrequests maximo à shMemory? e podemos atualizar esse valor com --?
         char authOrderStr[100];
 
+        // TODO ler da message queue se recebeu alerta de 100%, se sim, termina
+
         clock_gettime(CLOCK_MONOTONIC, &current_time);
 
         // Calculate time elapsed since last message in milliseconds
