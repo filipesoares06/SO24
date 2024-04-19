@@ -226,34 +226,8 @@ void authorizationRequestManager() {   //Método responsável por criar o proces
 }
 
 void monitorEngine() {   //Método responsável por criar o processo Monitor Engine.
-    // TODO create process
-    // TODO not sure if this is done correctly tbh how often does it have to check the data?
-
-    for(int i = 0; i < shMemory->n_users; i++){
-        char* alert[40];
-        mobileUser* user = &(shMemory->mobileUsers[i]);
-        int currentUsage = user->usedData;
-        int initialPlafond = user->inicialPlafond;
-
-        // TODO enviar pela message queue
-        if((currentUsage / initialPlafond) >= 0.8 && (currentUsage / initialPlafond) < 0.9){
-            snprintf(alert, sizeof(alert), "USER %d REACHED 80% of DATA USAGE\n", user->user_id);
-            writeLogFile(alert);
-        }
-
-        if((currentUsage / initialPlafond) >= 0.9 && (currentUsage / initialPlafond) < 1.0){
-            snprintf(alert, sizeof(alert), "USER %d REACHED 90% of DATA USAGE\n", user->user_id);
-            writeLogFile(alert);
-        }
-
-        if(currentUsage == initialPlafond){
-            snprintf(alert, sizeof(alert), "USER %d REACHED 100% of DATA USAGE\n", user->user_id);
-            writeLogFile(alert);
-        }
-
-    }
-
-    sleep(30);
+    createProcess(monitor_engine_func, NULL);
+    
 }
 
 int main(int argc, char *argv[]) {

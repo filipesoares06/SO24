@@ -12,6 +12,7 @@
 #include <string.h>
 #include <sys/ipc.h>   //Shared memory.
 #include <sys/shm.h>
+//#include <mqueue.h> // #include <fcntl.h> no mac
 
 #define USER_PIPE "/tmp/userpipe"
 #define BACK_PIPE "/tmp/backpipe"
@@ -57,6 +58,7 @@ void initializeSharedMemory();
 
 void receiver_func();
 void sender_func();
+void monitor_engine_func();
 int random_number(int min, int max);
 
 void sigint(int signum);

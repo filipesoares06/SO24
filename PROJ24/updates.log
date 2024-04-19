@@ -19,3 +19,7 @@
     - criei a variavel usedData no mobileUser para ter acesso aos dados que ele ja usou
     - tambem adicionei o numero de users na sharedmemory
     - TODO por semaforos para aceder à sharedmemory
+
+[macedo 19/04 1642] -----------------
+    - processo do monitor engine criado e chama a sua funcao
+    - monitor engine escreve alertas no log file
