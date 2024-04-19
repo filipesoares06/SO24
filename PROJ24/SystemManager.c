@@ -180,7 +180,7 @@ sharedMemory* attatchSharedMemory(int shmId) {   //Método responsável por atri
 }
 
 void initializeSharedMemory(int n_users) {   //Método responsável por inicializar a memória partilhada.
-    size_t shmSize = sizeof(shMemory) + sizeof(mobileUser) * n_users + 1;   //TODO alterei a formula, vê se está bem. 
+    size_t shmSize = sizeof(shMemory) + sizeof(mobileUser) * n_users + 1;
 
     shmId = createSharedMemory(shmSize);
     shMemory = attatchSharedMemory(shmId);
@@ -235,17 +235,20 @@ void monitorEngine() {   //Método responsável por criar o processo Monitor Eng
         int currentUsage = user->usedData;
         int initialPlafond = user->inicialPlafond;
 
-        // TODO escrever no log ou enviar para algum lado ig
+        // TODO enviar pela message queue
         if((currentUsage / initialPlafond) >= 0.8 && (currentUsage / initialPlafond) < 0.9){
             snprintf(alert, sizeof(alert), "USER %d REACHED 80% of DATA USAGE\n", user->user_id);
+            writeLogFile(alert);
         }
 
         if((currentUsage / initialPlafond) >= 0.9 && (currentUsage / initialPlafond) < 1.0){
             snprintf(alert, sizeof(alert), "USER %d REACHED 90% of DATA USAGE\n", user->user_id);
+            writeLogFile(alert);
         }
 
         if(currentUsage == initialPlafond){
             snprintf(alert, sizeof(alert), "USER %d REACHED 100% of DATA USAGE\n", user->user_id);
+            writeLogFile(alert);
         }
 
     }
