@@ -46,7 +46,7 @@ int main(int argc, char *argv[]) {
                     exit(1);
                 }
 
-                char msg[24]; // TODO is size enough?
+                char msg[24];
                 snprintf(msg, sizeof(msg), "%d#data_stats", backOfficeUserId);
 
                 write(fd, msg, strlen(msg) + 1);
@@ -54,6 +54,7 @@ int main(int argc, char *argv[]) {
                 close(fd); 
                 
                 // TODO ler estatisticas da message queue
+                
                 
             }
 

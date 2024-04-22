@@ -23,3 +23,13 @@
 [macedo 19/04 1642] -----------------
     - processo do monitor engine criado e chama a sua funcao
     - monitor engine escreve alertas no log file
+
+[macedo 22/04 1310] -----------------
+    - ha alguma informacao no notes to self que eram cenas para eu nao me esquecer
+    - a message queue deve estar feita, embora neste momento so seja usada para enviar e receber alertas
+    - o envio e rececao podem estar errados
+    - passei a criação dos pipes para uma funcao propria
+    - adicionei alguns semaforos, tipo o da sharedmemory (que ja e usado em alguns sitios)
+    - TODO eu depois de EA faço a funcao de fechar tudo
+    - TODO fazer rececao e envio de estatisticas
+    - a criacao da message queue pode n estar correta, eu fiz como a rita fez, mas nao sei para que é a key

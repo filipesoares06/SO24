@@ -9,6 +9,8 @@ int main(int argc, char *argv[]) {
     int musicInterval;
     int socialInterval;
     int reservedData;
+    int usedData;
+    int alert;
 
     pid_t mobileUserId;   //Id do MobileUser, que corresponderá ao PID (Identificador do processo) do processo.
 
@@ -24,6 +26,8 @@ int main(int argc, char *argv[]) {
     musicInterval = atoi(argv[4]);
     socialInterval = atoi(argv[5]);
     reservedData = atoi(argv[6]);
+    usedData = 0;
+    alert = 0; // TODO onde estão a ser usados?
     
     mobileUserId = getpid();   //Obtem o identificador do processo.
 
@@ -48,12 +52,34 @@ int main(int argc, char *argv[]) {
 
     char* services[3] = {"VIDEO", "SOCIAL", "MUSIC"};
 
+    message r_msg;
+
     //Gerar mensagens e posteriormente enviar para o named pipe.
     int request_counter = 0;
-    while (request_counter < numAuthRequests) {  // TODO será que deviamos ir buscar o numero de authrequests maximo à shMemory? e podemos atualizar esse valor com --?
+    while (request_counter < numAuthRequests) {
         char authOrderStr[100];
 
         // TODO ler da message queue se recebeu alerta de 100%, se sim, termina
+        if(msgrcv(msgq_id, &r_msg, 10 + mobileUserId, 0) == -1){
+            perror("Error while receiving message");
+            writeLogFile("[MU] Error while receiving message");
+            exit(1);
+        }
+
+        if(strmcp(r_msg.msg, "A#100") == 0){
+            // TODO close and exit
+
+            #if DEBUG   
+                printf("[MU %d] Exited due to data limit\n", mobileUserId);
+                writeLogFile("[MU %d] Exited due to data limit\n", mobileUserId);
+            #endif
+        }
+
+
+        #if DEBUG
+            printf("%s\n", r_msg.msg);
+        #endif
+
 
         clock_gettime(CLOCK_MONOTONIC, &current_time);
 
@@ -84,6 +110,7 @@ int main(int argc, char *argv[]) {
         usleep(1000); // sleeps for 1 ms
 
         // TODO close pipe
+        // TODO semaforo para o pipe ?? 
     }
 
 

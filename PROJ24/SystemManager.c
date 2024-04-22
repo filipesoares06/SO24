@@ -1,12 +1,21 @@
 #include "HeaderFile.h"
 
 FILE *logFile;
-sem_t *mutexSemaphore;
+
 
 void initializeMutexSemaphore() {   //Método responsável por inicializar um semáforo mutex
     sem_unlink("MUTEX");
+    sem_unlink("SHM_SEM");
 
     mutexSemaphore = sem_open("MUTEX", O_CREAT | O_EXCL, 0766, 1);
+
+    // TODO vê se há algum problema em ter isto tudo junto ; 0766 ou 0700
+    shmSemaphore = sem_open("SHM_SEM", O_CREAT | O_EXCL, 0766, 1);
+
+    if (shmSemaphore == SEM_FAILED) {
+        write_log("[SM] Shared Memory Semaphore Creation Failed\n");
+        exit(1);
+    }
 }
 
 void initializeLogFile() {   //Método responsável por inicializar o ficheiro de log.
@@ -195,6 +204,25 @@ void initializeSharedMemory(int n_users) {   //Método responsável por iniciali
     writeLogFile("SHARED MEMORY INITIALIZED");
 }
 
+void initializePipes(){
+    if ((mkfifo(USER_PIPE, O_CREAT | O_EXCL | 0600) < 0) && (errno != EEXIST)) {
+        perror("Error while creating user_pipe");
+        writeLogFile("[SM] Error while creating user_pipe");
+        exit(1);
+    }
+
+    if ((mkfifo(BACK_PIPE, O_CREAT | O_EXCL | 0600) < 0) && (errno != EEXIST)) {
+        perror("Error while creating back_pipe");
+        writeLogFile("[SM] Error while creating back_pipe");
+        exit(1);
+    }
+}
+
+void initializeMessageQueue(){
+    key_t key = ftok("msgfile", 'A');
+    int msgq_id = msgget(key, 0666 | IPC_CREAT);
+}
+
 void createProcess(void (*functionProcess) (void*), void *args) {   //Método responsável por criar um novo processo.
     if (fork() == 0) {   //Cria um novo processo. Se a função fork() retornar 0, todo o código neste bloco será executado no processo filho.
         if (args)   //Verifica se a função possui argumentos.
@@ -206,23 +234,7 @@ void createProcess(void (*functionProcess) (void*), void *args) {   //Método re
 }
 
 void authorizationRequestManager() {   //Método responsável por criar o processo Authorization Request Manager.
-    writeLogFile("PROCESS AUTHORIZATION_REQUEST_MANAGER CREATED");
-
-    pthread_t receiver_id, sender_id;
-
-    pthread_create(&receiver_id, NULL, receiver_func, NULL);
-    pthread_create(&sender_id, NULL, sender_func, NULL);
-
-    int fd = mkfifo(USER_PIPE, O_RDONLY);
-    if(fd == -1){
-        perror("Error while opening user_pipe");
-        writeLogFile("[ARM] Error while opening user_pipe");
-        exit(1);
-    }
-
-    close(fd);
-    pthread_join(receiver_id, NULL);
-    pthread_join(sender_id, NULL);
+    createProcess(authorization_request_manager_func, NULL);
 }
 
 void monitorEngine() {   //Método responsável por criar o processo Monitor Engine.
@@ -242,7 +254,7 @@ int main(int argc, char *argv[]) {
     initializeMutexSemaphore();
     initializeLogFile();
 
-    // initializeSharedMemory();
+    initializePipes();
 
     readConfigFile(argv[1]);   //Lê o ficheiro de configurações passado como parâmetro.
 
