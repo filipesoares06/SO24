@@ -1,7 +1,10 @@
 TODO LIST
-    - repesnar como fazer os mtypes das mensages para que seja facil o user saber qual é a sua
-    - receber a mensagem no mobile user
     - calcular o valor do alerta onde tiver de ser feito
+
+    - fazer queues
+
+    - como fazer enviar as mensagens pelos unnamed pipes 
+    - como ler as mensagens dos unnamed pipes nos authorization engines
 
 ----
 

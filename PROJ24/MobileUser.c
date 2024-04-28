@@ -68,11 +68,13 @@ int main(int argc, char *argv[]) {
 
         if(strmcp(r_msg.msg, "A#100") == 0){
             // TODO close and exit
-
+            printf("Shutting down...\n");
             #if DEBUG   
                 printf("[MU %d] Exited due to data limit\n", mobileUserId);
                 writeLogFile("[MU %d] Exited due to data limit\n", mobileUserId);
             #endif
+            close(fd);
+            exit(0);
         }
 
 
@@ -109,7 +111,8 @@ int main(int argc, char *argv[]) {
 
         usleep(1000); // sleeps for 1 ms
 
-        // TODO close pipe
+        // TODO is this correct?
+        close(fd);
         // TODO semaforo para o pipe ?? 
     }
 

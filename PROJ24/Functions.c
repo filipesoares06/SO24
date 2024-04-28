@@ -15,13 +15,15 @@ void receiver_func(){
 }
 
 void sender_func(){
-    printf("Receiver called\n");
+    printf("Sender called\n");
     fflush(stdout);
 }
 
-void monitor_engine_func(){
-    // TODO usar variavel de estado ou de notificação. sempre que o valor é alterado, ele verifica o plafond / alerta
+void authorization_engine(){
+    // TODO ler mensagens do sender pelo unnamed pipe
+}
 
+void monitor_engine_func(){
     key_t key = ftok("msgfile", 'A');
     int msgq_id = msgget(key, 0666 | IPC_CREAT);
 
@@ -146,7 +148,38 @@ void sigint(int signum)
     for (int i = 0; i < 4; i++)
         wait(NULL); // espera que os processos acabem e, depois, limpa os recursos.
 
-    // TODO clean resources function
+    clean_resources();
 
     exit(0);
+}
+
+void clean_resources(){
+    writeLogFile("SYSTEM SHUTTING DOWN");
+
+    wait(NULL);
+
+    sem_close(mutexSemaphore);
+    sem_unlink("");
+
+    sem_close(shmSemaphore);
+    sem_unlink("");
+
+    shmdt(shMemory);
+    shmctl(shmId, IPC_RMID, NULL);
+
+    //TODO close pipes before unlinks
+    for(int i = 0; i < N_AUTH_ENG; i++){
+        close(fd_sender_pipes[i][0]);
+        close(fd_sender_pipes[i][1]);
+    }
+
+    // close();
+    unlink(BACK_PIPE);
+
+    // close();
+    unlink(USER_PIPE);
+
+    msgctl(msgget(ftok("msgfile", 'A'), 0666 | IPC_CREAT), IPC_RMID, NULL);
+
+    //TODO fechar log
 }

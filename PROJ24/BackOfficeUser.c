@@ -54,8 +54,17 @@ int main(int argc, char *argv[]) {
                 close(fd); 
                 
                 // TODO ler estatisticas da message queue
-                
-                
+                message aux; bool flag = true;
+                while(flag){
+                    if(msgrcv(msgq_id, &aux, sizeof(struct message), 200, 0) == -1){
+                        perror("Error while receiving stats from message queue");
+                        writeLogFile("[BOU] Error while receiving stats from message queue");
+                        exit(1);
+                    }
+
+                    printf("%s\n", aux.msg);
+                    flag = false;
+                }
             }
 
             else if (strcmp(inputCommands, "reset\n") == 0) {

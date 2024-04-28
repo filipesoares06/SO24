@@ -201,10 +201,26 @@ void initializeSharedMemory(int n_users) {   //Método responsável por iniciali
     shMemory -> maxOthersWait = 0;
     shMemory -> n_users = n_users;
 
+    // Para as stats
+    shMemory -> total_video_data = 0;
+    shMemory -> total_music_data = 0;
+    shMemory -> total_social_data = 0;
+    shMemory -> total_video_authreq = 0;
+    shMemory -> total_music_authreq = 0;
+    shMemory -> total_social_authreq = 0;
+
     writeLogFile("SHARED MEMORY INITIALIZED");
 }
 
 void initializePipes(){
+    for(int i = 0; i < N_AUTH_ENG; i++){
+        if(pipe(fd_sender_pipes[i]) == -1){
+            perror("Error while creating sender's unnamed pipe");
+            writeLogFile("[SM] Error while creating sender's unnamed pipe");
+            exit(1);
+        }
+    }
+
     if ((mkfifo(USER_PIPE, O_CREAT | O_EXCL | 0600) < 0) && (errno != EEXIST)) {
         perror("Error while creating user_pipe");
         writeLogFile("[SM] Error while creating user_pipe");
@@ -221,6 +237,11 @@ void initializePipes(){
 void initializeMessageQueue(){
     key_t key = ftok("msgfile", 'A');
     int msgq_id = msgget(key, 0666 | IPC_CREAT);
+}
+
+void initThreads(){
+    pthread_create(&receiver_thread, NULL, receiver_func, NULL);
+    phtread_create(&sender_thread, NULL, sender_func, NULL);
 }
 
 void createProcess(void (*functionProcess) (void*), void *args) {   //Método responsável por criar um novo processo.
@@ -258,9 +279,20 @@ int main(int argc, char *argv[]) {
 
     readConfigFile(argv[1]);   //Lê o ficheiro de configurações passado como parâmetro.
 
+    initThreads();
+
     writeLogFile("5G_AUTH_PLATFORM SIMULATOR STARTING");
 
     //createProcess(authorizationRequestManager, NULL);
+
+    /* TODO é preciso fazer isto aqui?
+        pthread_join(receiver_thread, NULL);
+        pthread_join(sender_thread, NULL);
+
+        for(){
+            wait(NULL);
+        } for each of the processes?
+    */
 
     return 0;
 }

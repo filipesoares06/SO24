@@ -1,5 +1,6 @@
 #ifndef HEADER_FILE_H
 #define HEADER_FILE_H
+#define N_AUTH_ENG 6
 #define DEBUG 0
 
 #include <stdio.h>
@@ -59,6 +60,14 @@ typedef struct sharedMemory {
     int maxVideoWait;
     int maxOthersWait;
     int n_users;
+    
+    // FOR THE STATS
+    int total_video_data;
+    int total_music_data;
+    int total_social_data;
+    int total_video_authreq;
+    int total_music_authreq;
+    int total_social_authreq;
 } sharedMemory;
 
 int shmId;
@@ -66,6 +75,11 @@ sharedMemory* shMemory;
 
 int msgq_id;
 key_t key;
+
+pthread_t sender_thread;
+pthread_t receiver_thread;
+
+int fd_sender_pipes[N_AUTH_ENG][2]; // TODO ha forma de trocar o NAUTHENG pelo numero de auth engines inserido?
 
 void initializeLogFile();
 void writeLogFile(char *strMessage);
