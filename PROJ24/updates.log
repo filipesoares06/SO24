@@ -33,3 +33,9 @@
     - TODO eu depois de EA faço a funcao de fechar tudo
     - TODO fazer rececao e envio de estatisticas
     - a criacao da message queue pode n estar correta, eu fiz como a rita fez, mas nao sei para que é a key
+
+[macedo 09/05 0233] -----------------
+    - O Authorization engine lê do unnamed pipe, faz parsing e atualiza na sharedmemory
+    - // TODO ver se o valor de dados inicial que estou a usar na sharedmemory é o correto
+    Estou bue confuso porque o authorization engine tem de ler do unnamed pipe para atualizar o user mas tambem tem de ler do named pipe para fazer as estatisticas
+    - De qualquer forma o Authorization Engine envia os stats e lê os comandos do named pipe

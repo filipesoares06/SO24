@@ -19,8 +19,123 @@ void sender_func(){
     fflush(stdout);
 }
 
-void authorization_engine(){
-    // TODO ler mensagens do sender pelo unnamed pipe
+void authorization_engine(int engine_id){
+    // le mensagens do sender pelo unnamed pipe
+    char aux[1024];
+    read(fd_sender_pipes[engine_id][0], &aux, sizeof(aux));
+
+    int user_id; int req_value;
+    if (sscanf(aux, "%d#%d", &user_id, &req_value) != 2) {
+        writeLogFile("[AE] Error - Failed to parse the string");
+        perror("[AE] Error - Failed to parse the string\n");
+        return 1;
+    }
+
+    int n_users; bool found = false;
+
+    sem_wait(shmSemaphore);
+    n_users = shMemory->n_users;
+    sem_post(shmSemaphore);
+
+    
+    for(int i = 0; i < n_users; i++){
+        sem_wait(shmSemaphore);      
+        // TODO que valor usar aqui?? initialPlafond ou reservedData?  
+        if(shMemory->mobileUsers[i].user_id == user_id && shMemory->mobileUsers[i].usedData + req_value <= shMemory->mobileUsers[i].inicialPlafond){
+            shMemory->mobileUsers[i].usedData += req_value;
+    
+            if((shMemory->mobileUsers[i].usedData / shMemory->mobileUsers[i].inicialPlafond) >= 0.8 && (shMemory->mobileUsers[i].usedData / shMemory->mobileUsers[i].inicialPlafond) < 0.9){
+                shMemory->mobileUsers[i].alert = 1;
+                char* alert[40];
+                snprintf(alert, sizeof(alert), "USER %d REACHED 80% of DATA USAGE\n", user_id);
+                writeLogFile(alert);
+            }
+
+            else if((shMemory->mobileUsers[i].usedData / shMemory->mobileUsers[i].inicialPlafond) >= 0.9 && (shMemory->mobileUsers[i].usedData / shMemory->mobileUsers[i].inicialPlafond) < 1.0){
+                shMemory->mobileUsers[i].alert = 2;
+                char* alert[40];
+                snprintf(alert, sizeof(alert), "USER %d REACHED 90% of DATA USAGE\n", user_id);
+                writeLogFile(alert);
+            }
+
+            else if(shMemory->mobileUsers[i].usedData == shMemory->mobileUsers[i].inicialPlafond){
+                shMemory->mobileUsers[i].alert = 3;
+                char* alert[40];
+                snprintf(alert, sizeof(alert), "USER %d REACHED 100% of DATA USAGE\n", user_id);
+                writeLogFile(alert);
+            }
+        }
+        sem_post(shmSemaphore);
+        
+        if(found)
+            break; 
+    }
+
+    // --- 
+    char back_msg[40];
+    int fd = open(BACK_PIPE, O_RDONLY);
+    if (fd == -1){
+        perror("Error while opening user_pipe");
+        writeLogFile("[AE] Error while opening back_pipe");
+        exit(1);
+    }
+    
+    if(read(fd, back_msg, sizeof(back_msg)) == -1){
+        perror("Error reading from named pipe");
+        writeLogFile("[AE] Error reading from named pipe");
+        exit(1);
+    }
+
+    close(fd);
+    int integer_part;
+    char string_part[20];
+
+    if (sscanf(back_msg, "%d#%[^\n]", &integer_part, string_part) != 2) {
+        printf("Error parsing message\n");
+        exit(1);
+    }
+
+    if(strcmp(string_part, "data_stats")){
+        message msg;
+        msg.mtype = 200;
+        
+        sem_wait(shmSemaphore);
+        snprintf(msg.msg, 1024, "STATS (data|aut reqs)\nVIDEO: %d|%d\nMUSIC: %d|%d\nSOCIAL: %d|%d\n", 
+        shMemory->total_video_data, shMemory->total_video_authreq, 
+        shMemory->total_music_data, shMemory->total_music_authreq, 
+        shMemory->total_social_data, shMemory->total_social_authreq);
+        sem_post(shmSemaphore);
+
+        key_t key = ftok("msgfile", 'A');
+        int msgq_id = msgget(key, 0666 | IPC_CREAT);
+
+        if(msgq_id == -1){
+            perror("Error while opening Message Queue");
+            writeLogFile("[AE] Error while opening Message Queue");
+            exit(1);
+        }
+
+        if(msgsnd(msgq_id, &msg, 1024, 0) == -1){
+            perror("Error while sending message");
+            writeLogFile("[AE] Error while sending message");
+            exit(1);
+        }
+
+        writeLogFile("[AE] Stats Executed");
+    }
+
+    else if(strcmp(string_part, "reset")){
+        sem_wait(shmSemaphore);
+        shMemory->total_video_data = 0;
+        shMemory->total_video_authreq = 0;
+        shMemory->total_music_data = 0;
+        shMemory->total_music_authreq = 0; 
+        shMemory->total_social_data = 0;
+        shMemory->total_social_authreq = 0;
+        sem_post(shmSemaphore);
+
+        writeLogFile("[AE] Reset executed");
+    }
 }
 
 void monitor_engine_func(){
@@ -93,22 +208,7 @@ void monitor_engine_func(){
                 #endif
             }
             
-            /* TODO reutilizar para o calculo do alerta
-            if((currentUsage / initialPlafond) >= 0.8 && (currentUsage / initialPlafond) < 0.9){
-                snprintf(alert, sizeof(alert), "USER %d REACHED 80% of DATA USAGE\n", user->user_id);
-                writeLogFile(alert);
-            }
-
-            if((currentUsage / initialPlafond) >= 0.9 && (currentUsage / initialPlafond) < 1.0){
-                snprintf(alert, sizeof(alert), "USER %d REACHED 90% of DATA USAGE\n", user->user_id);
-                writeLogFile(alert);
-            }
-
-            if(currentUsage == initialPlafond){
-                snprintf(alert, sizeof(alert), "USER %d REACHED 100% of DATA USAGE\n", user->user_id);
-                writeLogFile(alert);
-            }
-            */
+            
 
         }
     }
