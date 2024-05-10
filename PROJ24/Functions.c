@@ -9,14 +9,18 @@ void backOfficeUserCommands() {   //Método responsável por imprimir os comando
 }
 
 // temp functions maybe
-void receiver_func(){
+void* receiver_func() {
     printf("Receiver called\n");
     fflush(stdout);
+
+    return NULL;
 }
 
-void sender_func(){
+void* sender_func() {
     printf("Sender called\n");
     fflush(stdout);
+
+    return NULL;
 }
 
 void authorization_engine(int engine_id){
@@ -28,7 +32,7 @@ void authorization_engine(int engine_id){
     if (sscanf(aux, "%d#%d", &user_id, &req_value) != 2) {
         perror("[AE] Error - Failed to parse the string\n");
 
-        return 1;
+        exit(1);
     }
 
     int n_users; bool found = false;
@@ -46,22 +50,22 @@ void authorization_engine(int engine_id){
     
             if((shMemory->mobileUsers[i].usedData / shMemory->mobileUsers[i].inicialPlafond) >= 0.8 && (shMemory->mobileUsers[i].usedData / shMemory->mobileUsers[i].inicialPlafond) < 0.9){
                 shMemory->mobileUsers[i].alertAux = 1;
-                char* alert[40];
-                snprintf(alert, sizeof(alert), "USER %d REACHED 80% of DATA USAGE\n", user_id);
+                char alert[40];
+                snprintf(alert, sizeof(alert), "USER %d REACHED 80%% of DATA USAGE\n", user_id);
                 //writeLogFile(alert);
             }
 
             else if((shMemory->mobileUsers[i].usedData / shMemory->mobileUsers[i].inicialPlafond) >= 0.9 && (shMemory->mobileUsers[i].usedData / shMemory->mobileUsers[i].inicialPlafond) < 1.0){
                 shMemory->mobileUsers[i].alertAux = 2;
-                char* alert[40];
-                snprintf(alert, sizeof(alert), "USER %d REACHED 90% of DATA USAGE\n", user_id);
+                char alert[40];
+                snprintf(alert, sizeof(alert), "USER %d REACHED 90%% of DATA USAGE\n", user_id);
                 //writeLogFile(alert);
             }
 
             else if(shMemory->mobileUsers[i].usedData == shMemory->mobileUsers[i].inicialPlafond){
                 shMemory->mobileUsers[i].alertAux = 3;
-                char* alert[40];
-                snprintf(alert, sizeof(alert), "USER %d REACHED 100% of DATA USAGE\n", user_id);
+                char alert[40];
+                snprintf(alert, sizeof(alert), "USER %d REACHED 100%% of DATA USAGE\n", user_id);
                 //writeLogFile(alert);
             }
         }
@@ -69,6 +73,7 @@ void authorization_engine(int engine_id){
         
         if(found)
             break; 
+
     }
 
     // --- 
@@ -158,7 +163,7 @@ void monitor_engine_func(){
 
     while(1){
         for(int i = 0; i < n_users; i++){
-            char* alert[40];
+            char alert[40];
 
             sem_wait(shmSemaphore);
             mobileUser* user = &(shMemory->mobileUsers[i]);
@@ -178,17 +183,17 @@ void monitor_engine_func(){
 
                 switch(user->alertAux){
                     case 1:
-                        snprintf(alert, sizeof(alert), "USER %d REACHED 80% of DATA USAGE\n", user->user_id);
+                        snprintf(alert, sizeof(alert), "USER %d REACHED 80%% of DATA USAGE\n", user->user_id);
                         //writeLogFile(alert);
                         snprintf(msg.msg, 10, "A#80");
                         break;
                     case 2:
-                        snprintf(alert, sizeof(alert), "USER %d REACHED 90% of DATA USAGE\n", user->user_id);
+                        snprintf(alert, sizeof(alert), "USER %d REACHED 90%% of DATA USAGE\n", user->user_id);
                         //writeLogFile(alert);
                         snprintf(msg.msg, 10, "A#90");
                         break;
                     case 3:
-                        snprintf(alert, sizeof(alert), "USER %d REACHED 100% of DATA USAGE\n", user->user_id);
+                        snprintf(alert, sizeof(alert), "USER %d REACHED 100%% of DATA USAGE\n", user->user_id);
                         //writeLogFile(alert);
                         snprintf(msg.msg, 10, "A#100");
                         break;
@@ -253,7 +258,7 @@ void sigint(int signum)
     exit(0);
 }
 
-void clean_resources(){
+void clean_resources() {
     //writeLogFile("SYSTEM SHUTTING DOWN");
 
     wait(NULL);

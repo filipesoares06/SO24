@@ -16,6 +16,10 @@
 #include <sys/shm.h>
 #include <errno.h>
 #include <signal.h>
+#include <sys/stat.h>
+#include <sys/msg.h>
+#include <sys/wait.h>
+//#include <mqueue.h>
 
 #define USER_PIPE "/tmp/userpipe"
 #define BACK_PIPE "/tmp/backpipe"
@@ -84,11 +88,12 @@ sharedMemory* attatchSharedMemory(int shmId);
 void initializeSharedMemory();
 void initThreads();
 
-void receiver_func();
-void sender_func();
+void* receiver_func();
+void* sender_func();
 void authorization_request_manager_func();
 void monitor_engine_func();
 int random_number(int min, int max);
+void clean_resources();
 
 void sigint(int signum);
 

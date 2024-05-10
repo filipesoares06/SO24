@@ -65,7 +65,7 @@ int main(int argc, char *argv[]) {
     while (requestCounter < numAuthRequests) {   //Ciclo que itera até ao número máximo de pedidos de autorização ser alcançado.
         char authOrderStr[100];
 
-        if(msgrcv(msgq_id, &r_msg, 10 + mobileUserId, 0) == -1) {   // TODO ler da message queue se recebeu alerta de 100%, se sim, termina.
+        if(msgrcv(msgq_id, &r_msg, sizeof(message), 10 + mobileUserId, 0) == -1) {   // TODO ler da message queue se recebeu alerta de 100%, se sim, termina.
             perror("Error while receiving message");
 
             exit(1);
