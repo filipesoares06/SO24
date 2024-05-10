@@ -9,16 +9,12 @@ TARGET2 = mobile_user
 TARGET3 = backoffice_user
 LOG = ./files/logFile.txt
 
-all: $(TARGET) $(TARGET2) $(TARGET3)
+all: $(TARGET)
 
-$(TARGET): $(OBJS) $(MAIN)
-	$(CC) $(FLAGS) $(MAIN) $(OBJS) -o $(TARGET) -lrt
-
-$(TARGET2): $(OBJS) $(MOBILEUSER)
-	$(CC) $(FLAGS) $(MOBILEUSER) $(OBJS) -o $(TARGET2) -lrt
-
-$(TARGET3): $(OBJS) $(BACKOFFICEUSER)
-	$(CC) $(FLAGS) $(BACKOFFICEUSER) $(OBJS) -o $(TARGET3) -lrt
+$(TARGET): $(OBJS)
+	$(CC) $(FLAGS) $(MAIN) $(OBJS) -g -o $(TARGET) -lrt
+	$(CC) $(FLAGS) $(MOBILEUSER) $(OBJS) -g -o $(TARGET2) -lrt
+	$(CC) $(FLAGS) $(BACKOFFICEUSER) $(OBJS) -g -o $(TARGET3) -lrt
 
 clean:
 	rm -f $(TARGET) $(TARGET2) $(TARGET3) $(LOG)

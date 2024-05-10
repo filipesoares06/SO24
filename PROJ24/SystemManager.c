@@ -2,7 +2,6 @@
 
 FILE *logFile;
 
-
 void initializeMutexSemaphore() {   //Método responsável por inicializar um semáforo mutex
     sem_unlink("MUTEX");
     sem_unlink("SHM_SEM");
@@ -13,14 +12,14 @@ void initializeMutexSemaphore() {   //Método responsável por inicializar um se
     shmSemaphore = sem_open("SHM_SEM", O_CREAT | O_EXCL, 0766, 1);
 
     if (shmSemaphore == SEM_FAILED) {
-        write_log("[SM] Shared Memory Semaphore Creation Failed\n");
+        writeLogFile("[SM] Shared Memory Semaphore Creation Failed\n");
         exit(1);
     }
 }
 
 void initializeLogFile() {   //Método responsável por inicializar o ficheiro de log.
     if ((logFile = fopen("files//logFile.txt", "a+")) == NULL) {
-        printf("[CONSOLE] Failed to open log file.");
+        perror("[CONSOLE] Failed to open log file.");
 
         exit(1);
     }
@@ -201,47 +200,46 @@ void initializeSharedMemory(int n_users) {   //Método responsável por iniciali
     shMemory -> maxOthersWait = 0;
     shMemory -> n_users = n_users;
 
-    // Para as stats
-    shMemory -> total_video_data = 0;
-    shMemory -> total_music_data = 0;
-    shMemory -> total_social_data = 0;
-    shMemory -> total_video_authreq = 0;
-    shMemory -> total_music_authreq = 0;
-    shMemory -> total_social_authreq = 0;
+    shMemory -> totalVideoData = 0;
+    shMemory -> totalMusicData = 0;
+    shMemory -> totalSocialData = 0;
+    shMemory -> totalVideoAuthReq = 0;
+    shMemory -> totalMusicAuthReq = 0;
+    shMemory -> totalSocialAuthReq = 0;
 
     writeLogFile("SHARED MEMORY INITIALIZED");
 }
 
-void initializePipes(){
+void initializePipes() {   //Método responsável por inicializar named e unnamed pipes.
     for(int i = 0; i < N_AUTH_ENG; i++){
         if(pipe(fd_sender_pipes[i]) == -1){
             perror("Error while creating sender's unnamed pipe");
-            writeLogFile("[SM] Error while creating sender's unnamed pipe");
+
             exit(1);
         }
     }
 
     if ((mkfifo(USER_PIPE, O_CREAT | O_EXCL | 0600) < 0) && (errno != EEXIST)) {
         perror("Error while creating user_pipe");
-        writeLogFile("[SM] Error while creating user_pipe");
+
         exit(1);
     }
 
     if ((mkfifo(BACK_PIPE, O_CREAT | O_EXCL | 0600) < 0) && (errno != EEXIST)) {
         perror("Error while creating back_pipe");
-        writeLogFile("[SM] Error while creating back_pipe");
+
         exit(1);
     }
 }
 
-void initializeMessageQueue(){
+void initializeMessageQueue() {   //Método responsável por inicializar a message queue.
     key_t key = ftok("msgfile", 'A');
     int msgq_id = msgget(key, 0666 | IPC_CREAT);
 }
 
-void initThreads(){
+void initThreads() {
     pthread_create(&receiver_thread, NULL, receiver_func, NULL);
-    phtread_create(&sender_thread, NULL, sender_func, NULL);
+    pthread_create(&sender_thread, NULL, sender_func, NULL);
 }
 
 void createProcess(void (*functionProcess) (void*), void *args) {   //Método responsável por criar um novo processo.
@@ -252,6 +250,8 @@ void createProcess(void (*functionProcess) (void*), void *args) {   //Método re
         else
             functionProcess(NULL);
     }
+
+    wait(NULL);
 }
 
 void authorizationRequestManager() {   //Método responsável por criar o processo Authorization Request Manager.
@@ -260,7 +260,6 @@ void authorizationRequestManager() {   //Método responsável por criar o proces
 
 void monitorEngine() {   //Método responsável por criar o processo Monitor Engine.
     createProcess(monitor_engine_func, NULL);
-    
 }
 
 int main(int argc, char *argv[]) {
@@ -283,7 +282,7 @@ int main(int argc, char *argv[]) {
 
     writeLogFile("5G_AUTH_PLATFORM SIMULATOR STARTING");
 
-    //createProcess(authorizationRequestManager, NULL);
+    createProcess(authorizationRequestManager, NULL);
 
     /* TODO é preciso fazer isto aqui?
         pthread_join(receiver_thread, NULL);

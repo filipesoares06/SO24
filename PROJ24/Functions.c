@@ -26,8 +26,8 @@ void authorization_engine(int engine_id){
 
     int user_id; int req_value;
     if (sscanf(aux, "%d#%d", &user_id, &req_value) != 2) {
-        writeLogFile("[AE] Error - Failed to parse the string");
         perror("[AE] Error - Failed to parse the string\n");
+
         return 1;
     }
 
@@ -45,24 +45,24 @@ void authorization_engine(int engine_id){
             shMemory->mobileUsers[i].usedData += req_value;
     
             if((shMemory->mobileUsers[i].usedData / shMemory->mobileUsers[i].inicialPlafond) >= 0.8 && (shMemory->mobileUsers[i].usedData / shMemory->mobileUsers[i].inicialPlafond) < 0.9){
-                shMemory->mobileUsers[i].alert = 1;
+                shMemory->mobileUsers[i].alertAux = 1;
                 char* alert[40];
                 snprintf(alert, sizeof(alert), "USER %d REACHED 80% of DATA USAGE\n", user_id);
-                writeLogFile(alert);
+                //writeLogFile(alert);
             }
 
             else if((shMemory->mobileUsers[i].usedData / shMemory->mobileUsers[i].inicialPlafond) >= 0.9 && (shMemory->mobileUsers[i].usedData / shMemory->mobileUsers[i].inicialPlafond) < 1.0){
-                shMemory->mobileUsers[i].alert = 2;
+                shMemory->mobileUsers[i].alertAux = 2;
                 char* alert[40];
                 snprintf(alert, sizeof(alert), "USER %d REACHED 90% of DATA USAGE\n", user_id);
-                writeLogFile(alert);
+                //writeLogFile(alert);
             }
 
             else if(shMemory->mobileUsers[i].usedData == shMemory->mobileUsers[i].inicialPlafond){
-                shMemory->mobileUsers[i].alert = 3;
+                shMemory->mobileUsers[i].alertAux = 3;
                 char* alert[40];
                 snprintf(alert, sizeof(alert), "USER %d REACHED 100% of DATA USAGE\n", user_id);
-                writeLogFile(alert);
+                //writeLogFile(alert);
             }
         }
         sem_post(shmSemaphore);
@@ -76,13 +76,13 @@ void authorization_engine(int engine_id){
     int fd = open(BACK_PIPE, O_RDONLY);
     if (fd == -1){
         perror("Error while opening user_pipe");
-        writeLogFile("[AE] Error while opening back_pipe");
+        //writeLogFile("[AE] Error while opening back_pipe");
         exit(1);
     }
     
     if(read(fd, back_msg, sizeof(back_msg)) == -1){
         perror("Error reading from named pipe");
-        writeLogFile("[AE] Error reading from named pipe");
+        //writeLogFile("[AE] Error reading from named pipe");
         exit(1);
     }
 
@@ -101,9 +101,9 @@ void authorization_engine(int engine_id){
         
         sem_wait(shmSemaphore);
         snprintf(msg.msg, 1024, "STATS (data|aut reqs)\nVIDEO: %d|%d\nMUSIC: %d|%d\nSOCIAL: %d|%d\n", 
-        shMemory->total_video_data, shMemory->total_video_authreq, 
-        shMemory->total_music_data, shMemory->total_music_authreq, 
-        shMemory->total_social_data, shMemory->total_social_authreq);
+        shMemory->totalVideoData, shMemory->totalVideoAuthReq, 
+        shMemory->totalMusicData, shMemory->totalMusicAuthReq, 
+        shMemory->totalSocialData, shMemory->totalSocialAuthReq);
         sem_post(shmSemaphore);
 
         key_t key = ftok("msgfile", 'A');
@@ -111,30 +111,30 @@ void authorization_engine(int engine_id){
 
         if(msgq_id == -1){
             perror("Error while opening Message Queue");
-            writeLogFile("[AE] Error while opening Message Queue");
+            //writeLogFile("[AE] Error while opening Message Queue");
             exit(1);
         }
 
         if(msgsnd(msgq_id, &msg, 1024, 0) == -1){
             perror("Error while sending message");
-            writeLogFile("[AE] Error while sending message");
+            //writeLogFile("[AE] Error while sending message");
             exit(1);
         }
 
-        writeLogFile("[AE] Stats Executed");
+        //writeLogFile("[AE] Stats Executed");
     }
 
     else if(strcmp(string_part, "reset")){
         sem_wait(shmSemaphore);
-        shMemory->total_video_data = 0;
-        shMemory->total_video_authreq = 0;
-        shMemory->total_music_data = 0;
-        shMemory->total_music_authreq = 0; 
-        shMemory->total_social_data = 0;
-        shMemory->total_social_authreq = 0;
+        shMemory->totalVideoData = 0;
+        shMemory->totalVideoAuthReq = 0;
+        shMemory->totalMusicData = 0;
+        shMemory->totalMusicAuthReq = 0; 
+        shMemory->totalSocialData = 0;
+        shMemory->totalSocialAuthReq = 0;
         sem_post(shmSemaphore);
 
-        writeLogFile("[AE] Reset executed");
+        //writeLogFile("[AE] Reset executed");
     }
 }
 
@@ -144,7 +144,7 @@ void monitor_engine_func(){
 
     if(msgq_id == -1){
         perror("Error while opening Message Queue");
-        writeLogFile("[ME] Error while opening Message Queue");
+        //writeLogFile("[ME] Error while opening Message Queue");
         exit(1);
     }
 
@@ -168,7 +168,7 @@ void monitor_engine_func(){
             int initialPlafond = user->inicialPlafond;
 
 
-            if(user->alert != 0){
+            if(user->alertAux != 0){
                 // msg.user_id = user->user_id;
                 msg.mtype = 10 + user->user_id;
 
@@ -176,34 +176,34 @@ void monitor_engine_func(){
                     printf("[DEBUG] 10 + %d -> %d\n", user->user_id, msg.mtype);
                 #endif
 
-                switch(user->alert){
+                switch(user->alertAux){
                     case 1:
                         snprintf(alert, sizeof(alert), "USER %d REACHED 80% of DATA USAGE\n", user->user_id);
-                        writeLogFile(alert);
+                        //writeLogFile(alert);
                         snprintf(msg.msg, 10, "A#80");
                         break;
                     case 2:
                         snprintf(alert, sizeof(alert), "USER %d REACHED 90% of DATA USAGE\n", user->user_id);
-                        writeLogFile(alert);
+                        //writeLogFile(alert);
                         snprintf(msg.msg, 10, "A#90");
                         break;
                     case 3:
                         snprintf(alert, sizeof(alert), "USER %d REACHED 100% of DATA USAGE\n", user->user_id);
-                        writeLogFile(alert);
+                        //writeLogFile(alert);
                         snprintf(msg.msg, 10, "A#100");
                         break;
                 }
 
                 if(msgsnd(msgq_id, &msg, 1024, 0) == -1){
                     perror("Error while sending message");
-                    writeLogFile("[ME] Error while sending message");
+                    //writeLogFile("[ME] Error while sending message");
                     exit(1);
                 }
 
                 #if DEBUG
                     char* text = NULL;
                     snprintf(text, 1024, "sent msgq alert for user %d \n", user->user_id);
-                    writeLogFile(text);
+                    //writeLogFile(text);
                     free(text);
                 #endif
             }
@@ -217,7 +217,7 @@ void monitor_engine_func(){
 }
 
 void authorization_request_manager_func(){
-    writeLogFile("PROCESS AUTHORIZATION_REQUEST_MANAGER CREATED");
+    //writeLogFile("PROCESS AUTHORIZATION_REQUEST_MANAGER CREATED");
 
     pthread_t receiver_id, sender_id;
 
@@ -227,7 +227,7 @@ void authorization_request_manager_func(){
     int fd = mkfifo(USER_PIPE, O_RDONLY);
     if(fd == -1){
         perror("Error while opening user_pipe");
-        writeLogFile("[ARM] Error while opening user_pipe");
+        //writeLogFile("[ARM] Error while opening user_pipe");
         exit(1);
     }
 
@@ -242,8 +242,8 @@ int random_number(int min, int max) {
 
 void sigint(int signum)
 {
-    write_log("SIGNAL SIGINT RECEIVED");
-    write_log("SIMULATOR WAITING FOR LAST TASKS TO FINISH");
+    //writeLogFile("SIGNAL SIGINT RECEIVED");
+    //writeLogFile("SIMULATOR WAITING FOR LAST TASKS TO FINISH");
 
     for (int i = 0; i < 4; i++)
         wait(NULL); // espera que os processos acabem e, depois, limpa os recursos.
@@ -254,7 +254,7 @@ void sigint(int signum)
 }
 
 void clean_resources(){
-    writeLogFile("SYSTEM SHUTTING DOWN");
+    //writeLogFile("SYSTEM SHUTTING DOWN");
 
     wait(NULL);
 

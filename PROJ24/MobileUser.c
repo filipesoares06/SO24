@@ -10,9 +10,7 @@ int main(int argc, char *argv[]) {
     int socialInterval;
     int reservedData;
     int usedData;
-    int alert;
-
-    pid_t mobileUserId;   //Id do MobileUser, que corresponderá ao PID (Identificador do processo) do processo.
+    int alertAux;
 
     if (argc != 6) {   //Verifica se os parâmetros estão corretos.
         fprintf(stderr, "mobile_user {plafond inicial} {número de pedidos de autorização} {intervalo VIDEO} {intervalo MUSIC} {intervalo SOCIAL} {dados a reservar}");
@@ -27,95 +25,105 @@ int main(int argc, char *argv[]) {
     socialInterval = atoi(argv[5]);
     reservedData = atoi(argv[6]);
     usedData = 0;
-    alert = 0; // TODO onde estão a ser usados?
+    alertAux = 0;   //TODO onde estão a ser usados?
     
+    pid_t mobileUserId;   //Id do MobileUser, que corresponderá ao PID (Identificador do processo) do processo.
     mobileUserId = getpid();   //Obtem o identificador do processo.
 
-    //Criar named pipe.
-    int fd = mkfifo(USER_PIPE, O_WRONLY);
-    if(fd == -1){
-        perror("Error while opening user_pipe");
-        writeLogFile("[MU] Error while opening user_pipe");
+    if (mkfifo(USER_PIPE, 0666) == -1) {   //É criado o named pipe USER_PIPE.
+        perror("Error while creating USER_PIPE");
+
+        exit(1);
+    }
+
+    //writeLogFile("Named pipe USER_PIPE is up!");
+
+    int fd = open(USER_PIPE, O_WRONLY);   //É aberto o named pipe USER_PIPE.
+    if(fd == -1) {
+        perror("Error while opening USER_PIPE");
+
         exit(1);
     }
 
     char registerMessageStr[100];
-
     snprintf(registerMessageStr, sizeof(registerMessageStr), "%d#%d", mobileUserId, inicialPlafond);
-    // writeLogFile(registerMessageStr);
 
-    //Enviar informação no named pipe.
-    write(fd, registerMessageStr, strlen(registerMessageStr)+1);
+    int fdWrite = write(fd, registerMessageStr, strlen(registerMessageStr) + 1);   //Enviar informação no named pipe.
+    if (fdWrite == -1) {
+        perror("Error while writing to USER_PIPE");
 
-    struct timespec last_time, current_time;
-    clock_gettime(CLOCK_MONOTONIC, &last_time);
+        exit(1);
+    }
 
-    char* services[3] = {"VIDEO", "SOCIAL", "MUSIC"};
+    struct timespec lastTime, currentTime;
+    clock_gettime(CLOCK_MONOTONIC, &lastTime);
+    char* availableServices[3] = {"VIDEO", "SOCIAL", "MUSIC"};   //Array que contem todos os serviços disponíveis.
 
     message r_msg;
 
-    //Gerar mensagens e posteriormente enviar para o named pipe.
-    int request_counter = 0;
-    while (request_counter < numAuthRequests) {
+    int requestCounter = 0;   //Gerar mensagens e posteriormente enviar para o named pipe.
+    while (requestCounter < numAuthRequests) {   //Ciclo que itera até ao número máximo de pedidos de autorização ser alcançado.
         char authOrderStr[100];
 
-        // TODO ler da message queue se recebeu alerta de 100%, se sim, termina
-        if(msgrcv(msgq_id, &r_msg, 10 + mobileUserId, 0) == -1){
+        if(msgrcv(msgq_id, &r_msg, 10 + mobileUserId, 0) == -1) {   // TODO ler da message queue se recebeu alerta de 100%, se sim, termina.
             perror("Error while receiving message");
-            writeLogFile("[MU] Error while receiving message");
+
             exit(1);
         }
 
-        if(strmcp(r_msg.msg, "A#100") == 0){
-            // TODO close and exit
+        if(strcmp(r_msg.msg, "A#100") == 0) {   //Recebe um alerta de 100% do plafond esgotado.
             printf("Shutting down...\n");
-            #if DEBUG   
-                printf("[MU %d] Exited due to data limit\n", mobileUserId);
-                writeLogFile("[MU %d] Exited due to data limit\n", mobileUserId);
-            #endif
+
             close(fd);
+
             exit(0);
         }
 
+        clock_gettime(CLOCK_MONOTONIC, &currentTime);
 
-        #if DEBUG
-            printf("%s\n", r_msg.msg);
-        #endif
+        long elapsedTime = (currentTime.tv_sec - lastTime.tv_sec) * 1000 + (currentTime.tv_nsec - lastTime.tv_nsec) / 1000000;    //Calcula o tempo decorrido desde a última mensagem enviada em ms.
 
+        const char *service;   //Determina de que serviço se trata de acordo com o tempo decorrido.
+        if (elapsedTime >= musicInterval) {
+            service = availableServices[2];   //MUSIC.
 
-        clock_gettime(CLOCK_MONOTONIC, &current_time);
+            lastTime = currentTime;
+        } 
+        
+        else if (elapsedTime >= socialInterval) {
+            service = availableServices[1];   //SOCIAL.
 
-        // Calculate time elapsed since last message in milliseconds
-        long elapsed_ms = (current_time.tv_sec - last_time.tv_sec) * 1000 + (current_time.tv_nsec - last_time.tv_nsec) / 1000000;
+            lastTime = currentTime;
+        } 
+        
+        else if (elapsedTime >= videoInterval) {
+            service = availableServices[0];   //VIDEO.
 
-        // Update the service type based on elapsed time
-        const char *service;
-        if (elapsed_ms >= musicInterval) {
-            service = services[2]; // MUSIC
-            last_time = current_time;
-        } else if (elapsed_ms >= socialInterval) {
-            service = services[1]; // SOCIAL
-            last_time = current_time;
-        } else if (elapsed_ms >= videoInterval) {
-            service = services[0]; // VIDEO
-            last_time = current_time;
-        } else {
-            // If not enough time has passed, continue to the next iteration
+            lastTime = currentTime;
+        } 
+        
+        else {   // If not enough time has passed, continue to the next iteration.
             continue;
         }
 
         snprintf(authOrderStr, sizeof(authOrderStr), "%d#%s#%d", mobileUserId, service,reservedData);
-        write(fd, registerMessageStr, strlen(registerMessageStr)+1);
+        fdWrite = write(fd, registerMessageStr, strlen(registerMessageStr)+1);
 
-        print("%s", authOrderStr);
+        if (fdWrite == -1) {
+            perror("Error while writing to named pipe USER_PIPE");
+
+            exit(1);
+        }
+
+        printf("%s", authOrderStr);
 
         usleep(1000); // sleeps for 1 ms
 
         // TODO is this correct?
-        close(fd);
         // TODO semaforo para o pipe ?? 
     }
 
+    close(fd);
 
     return 0;
 }

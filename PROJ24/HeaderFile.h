@@ -15,7 +15,7 @@
 #include <sys/ipc.h>   //Shared memory.
 #include <sys/shm.h>
 #include <errno.h>
-//TODO uncomment this #include <mqueue.h> // #include <fcntl.h> no mac 
+#include <signal.h>
 
 #define USER_PIPE "/tmp/userpipe"
 #define BACK_PIPE "/tmp/backpipe"
@@ -23,20 +23,15 @@
 sem_t *mutexSemaphore;
 sem_t *shmSemaphore;
 
-
-
 /*int queuePos;   //Variáveis que representam os valores do ficheiro de configurações.
 int maxAuthServers;
 int authProcTime;
 int maxVideoWait;
 int maxOthersWait;*/
 
-typedef struct message {
+typedef struct message {   //Estrutura que representa uma mensagem a enviar para o named pipe USER_PIPE com os pedidos de autorização.
     long mtype; // Alertas: 10 + user_id ; Stats: 200
-    
-    // int user_id;
     char msg[1024];
-
 } message;
 
 typedef struct mobileUser {   //Estrutura que representa o Mobile User.
@@ -48,7 +43,7 @@ typedef struct mobileUser {   //Estrutura que representa o Mobile User.
     int socialInterval;
     int reservedData;
     int usedData;
-    int alert; // TODO wehn changing used data, update alter level [0: <80; 1: 80-90, 2: 90-100; 3: 100]
+    int alertAux; // TODO wehn changing used data, update alter level [0: <80; 1: 80-90, 2: 90-100; 3: 100]
 } mobileUser;
 
 typedef struct sharedMemory {
@@ -61,13 +56,12 @@ typedef struct sharedMemory {
     int maxOthersWait;
     int n_users;
     
-    // FOR THE STATS
-    int total_video_data;
-    int total_music_data;
-    int total_social_data;
-    int total_video_authreq;
-    int total_music_authreq;
-    int total_social_authreq;
+    int totalVideoData;   //Variáveis que representam os valores das estatísticas.
+    int totalMusicData;
+    int totalSocialData;
+    int totalVideoAuthReq;
+    int totalMusicAuthReq;
+    int totalSocialAuthReq;
 } sharedMemory;
 
 int shmId;
@@ -88,6 +82,7 @@ void backOfficeUserCommands();
 int createSharedMemory(int shmSize);
 sharedMemory* attatchSharedMemory(int shmId);
 void initializeSharedMemory();
+void initThreads();
 
 void receiver_func();
 void sender_func();

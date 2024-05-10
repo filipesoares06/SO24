@@ -9,12 +9,13 @@ int main(int argc, char *argv[]) {
         return -1;
     }
 
-    backOfficeUserCommands();   //Imprime os comandos disponíveis. Tirar?
+    backOfficeUserCommands();   //Imprime os comandos disponíveis.
 
     char commandInput[100];
 
     while (true) {
         fgets(commandInput, sizeof(commandInput), stdin);
+
         char *verifyInput;
         int backOfficeUserId;
         char inputCommands[100];
@@ -24,29 +25,38 @@ int main(int argc, char *argv[]) {
 
         while (verifyInput != NULL) {
             strcpy(inputCommands, verifyInput);
+
             verifyInput = strtok(NULL, "#");
         }
 
         if (backOfficeUserId != 1) {
-            writeLogFile("Invalid Id!\n");
+            printf("Invalid Id!\n");
         }
 
         else if (strcmp(inputCommands, "data_stats\n") != 0 && strcmp(inputCommands, "reset\n") != 0) {
-            writeLogFile("Invalid Command!\n");
+            printf("Invalid Command!\n");
         }
 
-        else {
-            if (strcmp(inputCommands, "data_stats\n") == 0) {
-                // writeLogFile("Service     Total Data     Auth Reqs\n");
+        else { 
+            //TODO Criar named pipe BACK_PIPE aqui.
 
-                int fd = mkfifo(BACK_PIPE, O_WRONLY);
+            if (mkfifo(BACK_PIPE, 0666) == -1) {   //É criado o named pipe BACK_PIPE.
+                perror("Error while creating BACK_PIPE");
+
+                exit(1);
+            }
+
+            //writeLogFile("Named pipe BACK_PIPE is up!");
+
+            if (strcmp(inputCommands, "data_stats\n") == 0) {   //Executa a operação data_stats.
+                int fd = open(BACK_PIPE, O_WRONLY);
                 if(fd == -1){
-                    perror("Error while opening back_pipe");
-                    writeLogFile("[BOU] Error while opening back_pipe");
+                    perror("Error while opening BACK_PIPE");
+                    
                     exit(1);
                 }
 
-                char msg[24];
+                char msg[64];
                 snprintf(msg, sizeof(msg), "%d#data_stats", backOfficeUserId);
 
                 write(fd, msg, strlen(msg) + 1);
@@ -58,7 +68,7 @@ int main(int argc, char *argv[]) {
                 while(flag){
                     if(msgrcv(msgq_id, &aux, sizeof(struct message), 200, 0) == -1){
                         perror("Error while receiving stats from message queue");
-                        writeLogFile("[BOU] Error while receiving stats from message queue");
+                        //writeLogFile("[BOU] Error while receiving stats from message queue");
                         exit(1);
                     }
 
@@ -67,17 +77,15 @@ int main(int argc, char *argv[]) {
                 }
             }
 
-            else if (strcmp(inputCommands, "reset\n") == 0) {
-                // writeLogFile("Reseting\n");
-
-                int fd = mkfifo(BACK_PIPE, O_WRONLY);
+            else if (strcmp(inputCommands, "reset\n") == 0) {   //Executa a operação reset.
+                int fd = open(BACK_PIPE, O_WRONLY);
                 if(fd == -1){
                     perror("Error while opening back_pipe");
-                    writeLogFile("[BOU] Error while opening back_pipe");
+
                     exit(1);
                 }
 
-                char msg[24]; // TODO is size enough?
+                char msg[64];
                 snprintf(msg, sizeof(msg), "%d#reset", backOfficeUserId);
 
                 write(fd, msg, strlen(msg) + 1);
