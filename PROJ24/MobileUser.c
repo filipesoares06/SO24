@@ -12,7 +12,7 @@ int main(int argc, char *argv[]) {
     int usedData;
     int alertAux;
 
-    if (argc != 6) {   //Verifica se os parâmetros estão corretos.
+    if (argc != 7) {   //Verifica se os parâmetros estão corretos.
         fprintf(stderr, "mobile_user {plafond inicial} {número de pedidos de autorização} {intervalo VIDEO} {intervalo MUSIC} {intervalo SOCIAL} {dados a reservar}");
 
         return -1;
@@ -30,13 +30,17 @@ int main(int argc, char *argv[]) {
     pid_t mobileUserId;   //Id do MobileUser, que corresponderá ao PID (Identificador do processo) do processo.
     mobileUserId = getpid();   //Obtem o identificador do processo.
 
-    if (mkfifo(USER_PIPE, 0666) == -1) {   //É criado o named pipe USER_PIPE.
-        perror("Error while creating USER_PIPE");
-
-        exit(1);
+    if (access(USER_PIPE, F_OK) != -1) {   //Verifica se o named pipe USER_PIPE já existe.
+        printf("Named Pipe USER_PIPE is ready!\n");
     }
 
-    //writeLogFile("Named pipe USER_PIPE is up!");
+    else {
+        if (mkfifo(USER_PIPE, 0666) == -1) {   //É criado o named pipe USER_PIPE.
+            perror("Error while creating USER_PIPE");
+
+            exit(1);
+        }
+    }
 
     int fd = open(USER_PIPE, O_WRONLY);   //É aberto o named pipe USER_PIPE.
     if(fd == -1) {
@@ -102,7 +106,7 @@ int main(int argc, char *argv[]) {
             lastTime = currentTime;
         } 
         
-        else {   // If not enough time has passed, continue to the next iteration.
+        else {   //Avança para a próxima iteração caso não tenha decorrido tempo suficiente.
             continue;
         }
 

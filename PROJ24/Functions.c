@@ -8,21 +8,6 @@ void backOfficeUserCommands() {   //Método responsável por imprimir os comando
     fflush(stdout);
 }
 
-// temp functions maybe
-void* receiver_func() {
-    printf("Receiver called\n");
-    fflush(stdout);
-
-    return NULL;
-}
-
-void* sender_func() {
-    printf("Sender called\n");
-    fflush(stdout);
-
-    return NULL;
-}
-
 void authorization_engine(int engine_id){
     // le mensagens do sender pelo unnamed pipe
     char aux[1024];
@@ -219,26 +204,6 @@ void monitor_engine_func(){
     }
 
     // TODO fazer a cada 30s enviar stats
-}
-
-void authorization_request_manager_func(){
-    //writeLogFile("PROCESS AUTHORIZATION_REQUEST_MANAGER CREATED");
-
-    pthread_t receiver_id, sender_id;
-
-    pthread_create(&receiver_id, NULL, receiver_func, NULL);
-    pthread_create(&sender_id, NULL, sender_func, NULL);
-
-    int fd = mkfifo(USER_PIPE, O_RDONLY);
-    if(fd == -1){
-        perror("Error while opening user_pipe");
-        //writeLogFile("[ARM] Error while opening user_pipe");
-        exit(1);
-    }
-
-    close(fd);
-    pthread_join(receiver_id, NULL);
-    pthread_join(sender_id, NULL);
 }
 
 int random_number(int min, int max) {

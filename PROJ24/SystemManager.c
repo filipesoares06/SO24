@@ -210,36 +210,58 @@ void initializeSharedMemory(int n_users) {   //Método responsável por iniciali
     writeLogFile("SHARED MEMORY INITIALIZED");
 }
 
-void initializePipes() {   //Método responsável por inicializar named e unnamed pipes.
-    for(int i = 0; i < N_AUTH_ENG; i++){
-        if(pipe(fd_sender_pipes[i]) == -1){
-            perror("Error while creating sender's unnamed pipe");
-
-            exit(1);
-        }
-    }
-
-    if ((mkfifo(USER_PIPE, O_CREAT | O_EXCL | 0600) < 0) && (errno != EEXIST)) {
-        perror("Error while creating user_pipe");
-
-        exit(1);
-    }
-
-    if ((mkfifo(BACK_PIPE, O_CREAT | O_EXCL | 0600) < 0) && (errno != EEXIST)) {
-        perror("Error while creating back_pipe");
-
-        exit(1);
-    }
-}
-
 void initializeMessageQueue() {   //Método responsável por inicializar a message queue.
     key_t key = ftok("msgfile", 'A');
     int msgq_id = msgget(key, 0666 | IPC_CREAT);
 }
 
-void initThreads() {
-    pthread_create(&receiver_thread, NULL, receiver_func, NULL);
-    pthread_create(&sender_thread, NULL, sender_func, NULL);
+void* receiverFunction() {   //Método responsável por implementar a thread receiver.
+    writeLogFile("THREAD RECEIVER CREATED");
+    fflush(stdout);
+
+    int fd = open(USER_PIPE, O_RDONLY);   //Lê do named pipe USER_PIPE.
+    if(fd == -1){
+        perror("Error while opening USER_PIPE");
+        exit(1);
+    }
+
+    char fdBuffer[64];
+
+    ssize_t fdMessage = read(fd, fdBuffer, sizeof(fdBuffer));   //TODO sizeof(fdBuffer) ou 64?
+    if (fdMessage == -1) {
+        perror("Error while reading from USER_PIPE");
+
+        exit(1);
+    }
+
+    printf("%s\n", fdBuffer);
+
+    close(fd);
+
+    return NULL;
+}
+
+void* senderFunction() {   //Método responsável por implementar a thread sender.
+    writeLogFile("THREAD SENDER CREATED");
+    fflush(stdout);
+
+    return NULL;
+}
+
+void initThreads() {   //Método responsável por inicializar as thread receiver e sender.
+    pthread_create(&receiverThread, NULL, receiverFunction, NULL);
+    pthread_create(&senderThread, NULL, senderFunction, NULL);
+}
+
+void authorizationRequestManagerFunction() {   //Método responsável por implementar o authorization request manager.
+    writeLogFile("PROCESS AUTHORIZATION_REQUEST_MANAGER CREATED");
+
+    pthread_t receiver_id, sender_id;
+    
+    initThreads();
+
+    pthread_join(receiver_id, NULL);
+    pthread_join(sender_id, NULL);
 }
 
 void createProcess(void (*functionProcess) (void*), void *args) {   //Método responsável por criar um novo processo.
@@ -255,7 +277,7 @@ void createProcess(void (*functionProcess) (void*), void *args) {   //Método re
 }
 
 void authorizationRequestManager() {   //Método responsável por criar o processo Authorization Request Manager.
-    createProcess(authorization_request_manager_func, NULL);
+    createProcess(authorizationRequestManagerFunction, NULL);
 }
 
 void monitorEngine() {   //Método responsável por criar o processo Monitor Engine.
@@ -272,15 +294,14 @@ int main(int argc, char *argv[]) {
     }
 
     initializeMutexSemaphore();
+
     initializeLogFile();
 
-    initializePipes();
+    writeLogFile("5G_AUTH_PLATFORM SIMULATOR STARTING");
 
     readConfigFile(argv[1]);   //Lê o ficheiro de configurações passado como parâmetro.
 
-    initThreads();
-
-    writeLogFile("5G_AUTH_PLATFORM SIMULATOR STARTING");
+    writeLogFile("PROCESS SYSTEM MANAGER CREATED");
 
     createProcess(authorizationRequestManager, NULL);
 

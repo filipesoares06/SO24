@@ -71,11 +71,11 @@ typedef struct sharedMemory {
 int shmId;
 sharedMemory* shMemory;
 
+pthread_t receiverThread;
+pthread_t senderThread;
+
 int msgq_id;
 key_t key;
-
-pthread_t sender_thread;
-pthread_t receiver_thread;
 
 int fd_sender_pipes[N_AUTH_ENG][2]; // TODO ha forma de trocar o NAUTHENG pelo numero de auth engines inserido?
 
@@ -86,11 +86,11 @@ void backOfficeUserCommands();
 int createSharedMemory(int shmSize);
 sharedMemory* attatchSharedMemory(int shmId);
 void initializeSharedMemory();
+void* receiverFunction();
+void* senderFunction();
 void initThreads();
+void authorizationRequestManagerFunction();
 
-void* receiver_func();
-void* sender_func();
-void authorization_request_manager_func();
 void monitor_engine_func();
 int random_number(int min, int max);
 void clean_resources();
