@@ -20,6 +20,8 @@
 #include <sys/msg.h>
 #include <sys/wait.h>
 #include <mqueue.h>
+#include <sys/select.h>
+#include <limits.h>
 
 #define USER_PIPE "/tmp/userpipe"
 #define BACK_PIPE "/tmp/backpipe"
@@ -73,6 +75,8 @@ key_t key;
 
 int fd_sender_pipes[N_AUTH_ENG][2]; // TODO ha forma de trocar o NAUTHENG pelo numero de auth engines inserido?
 
+char (*videoQueue)[100];
+
 void initializeLogFile();
 void writeLogFile(char *strMessage);
 int readConfigFile(char *fileName);
@@ -80,11 +84,11 @@ void backOfficeUserCommands();
 int createSharedMemory(int shmSize);
 sharedMemory* attatchSharedMemory(int shmId);
 void initializeSharedMemory();
-void* receiverFunction(void* arg);
+void* receiverFunction();
 void* senderFunction();
 void initThreads();
 void authorizationRequestManagerFunction();
-void addVideoQueue(char videoQueue[][100], char *fdBuffer, int queueFront, int queueBack);
+void addVideoQueue(char *fdBuffer, int queueFront, int queueBack);
 
 void monitor_engine_func();
 int random_number(int min, int max);

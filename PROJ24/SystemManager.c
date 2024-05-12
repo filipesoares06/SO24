@@ -215,7 +215,7 @@ void initializeMessageQueue() {   //Método responsável por inicializar a messa
     int msgq_id = msgget(key, 0666 | IPC_CREAT);
 }
 
-void addVideoQueue(char videoQueue[][100], char *fdBuffer, int queueFront, int queueBack) {   //Método responsável por adicionar à video streaming queue.
+void addVideoQueue(char *fdBuffer, int queueFront, int queueBack) {   //Método responsável por adicionar à video streaming queue.
     //Adicionar semáforo.
 
     if ((queueBack + 1) % shMemory -> queuePos == queueFront) {
@@ -233,30 +233,102 @@ void addVideoQueue(char videoQueue[][100], char *fdBuffer, int queueFront, int q
     //Retirar semáforo.
 }
 
-void* receiverFunction(void* arg) {   //Método responsável por implementar a thread receiver.
+void* receiverFunction() {   //Método responsável por implementar a thread receiver.
     writeLogFile("THREAD RECEIVER CREATED");
     fflush(stdout);
+    
+    int fdUserPipe = open(USER_PIPE, O_RDONLY);
+    int fdBackPipe = open(BACK_PIPE, O_RDONLY);
+    
+    if (fdUserPipe == -1 || fdBackPipe == -1) {
+        perror("Error while opening named pipes");
+        
+        exit(EXIT_FAILURE);
+    }
+    
+    fd_set read_fds;
+    int fdMax = (fdUserPipe > fdBackPipe) ? fdUserPipe : fdBackPipe;
+    
+    while (1) {
+        FD_ZERO(&read_fds);
+        FD_SET(fdUserPipe, &read_fds);
+        FD_SET(fdBackPipe, &read_fds);
 
-    char (*videoQueue)[100] = (char(*)[100]) arg;
-    char (*otherQueue)[100] = (char(*)[100]) arg;
+        int activity = select(fdMax + 1, &read_fds, NULL, NULL, NULL);   // Use select() to wait for activity on pipes
+        if (activity == -1) {
+            perror("Error selecting pipe");
 
-    int queueFront = 0;
-    int queueBack = 0;
-    char fdBuffer[64];
+            exit(EXIT_FAILURE);
+        }
 
-    int fd = open(USER_PIPE, O_RDONLY);   //Lê do named pipe USER_PIPE.
-    if(fd == -1){
-        perror("Error while opening USER_PIPE");
-        exit(1);
+        if (FD_ISSET(fdUserPipe, &read_fds)) {   //Name pipe USER_PIPE.
+            int queueFront = 0;
+            int queueBack = 0;
+            char fdBuffer[PIPE_BUF];
+
+            ssize_t bytes_read = read(fdUserPipe, fdBuffer, sizeof(fdBuffer));
+            if (bytes_read == -1) {
+                perror("Error reading from USER_PIPE");
+
+                exit(EXIT_FAILURE);
+            } 
+            
+            else if (bytes_read == 0) {   // TODO isto pode dar merda
+                close(fdUserPipe);
+
+                fdUserPipe = -1;
+            } 
+            
+            else {
+                int n1, n2;
+                char s[128];
+                
+                if(sscanf(fdBuffer, "%d#%d", &n1, &n2) == 2) {   //Mensagem de registo.
+                    // TODO registar user. Guardar valores na shared memory.
+                    printf("%s\n", fdBuffer);
+                }
+
+                else if(sscanf(fdBuffer, "%d#127[^#]#%d", &n1, &s, &n2) == 3){
+                    if (strcmp(s, "VIDEO")){   //Envia para a video streaming queue.
+                        addVideoQueue(fdBuffer, queueFront, queueBack);
+                        printf("%s\n", fdBuffer);
+                    }
+
+                    else {   //Envia para a other services queue.
+                        
+                    }
+                }
+
+                else {
+                    perror("[RT] Wrong user request format\n");
+                }
+            }
+        }
+
+        if (FD_ISSET(fdBackPipe, &read_fds)) {   //Named pipe BACK_PIPE.
+            char buffer[PIPE_BUF];
+
+            ssize_t bytes_read = read(fdBackPipe, buffer, sizeof(buffer));
+            if (bytes_read == -1) {
+                perror("Error reading from BACK_PIPE");
+
+                exit(EXIT_FAILURE);
+            } 
+            
+            else if (bytes_read == 0) {   // TODO isto pode dar merda.
+                close(fdBackPipe);
+
+                fdBackPipe = -1;
+            } 
+            
+            else {   //Envia para a other services queue.
+                
+            }
+        }
     }
 
-    while (read(fd, fdBuffer, sizeof(fdBuffer)) > 0) {
-        //TODO Fazer distribuição pelas queues.
-
-        addVideoQueue(videoQueue, fdBuffer, queueFront, queueBack);
-    }
-
-    close(fd);
+    close(fdUserPipe);
+    close(fdBackPipe);
 
     pthread_exit(NULL);
 }
@@ -268,8 +340,8 @@ void* senderFunction() {   //Método responsável por implementar a thread sende
     pthread_exit(NULL);
 }
 
-void initThreads(char videoQueue[][100]) {   //Método responsável por inicializar as thread receiver e sender.
-    pthread_create(&receiverThread, NULL, receiverFunction, (void*) videoQueue);
+void initThreads() {   //Método responsável por inicializar as thread receiver e sender.
+    pthread_create(&receiverThread, NULL, receiverFunction, NULL);
     pthread_create(&senderThread, NULL, senderFunction, NULL);
 }
 
@@ -290,13 +362,26 @@ void authorizationRequestManagerFunction() {   //Método responsável por implem
         writeLogFile("NAMED PIPE USER_PIPE IS READY!");
     }
     
+    if (access(BACK_PIPE, F_OK) != -1) {   //Verifica se o named pipe BACK_PIPE já existe.
+        writeLogFile("NAMED PIPE BACK_PIPE IS READY!");
+    }
+
+    else {
+        if (mkfifo(BACK_PIPE, 0666) == -1) {   //É criado o named pipe BACK_PIPE.
+            perror("Error while creating BACK_PIPE");
+
+            exit(1);
+        }
+
+        writeLogFile("NAMED PIPE BACK_PIPE IS READY!");
+    }
+
     int queueSize = shMemory -> queuePos;
-    char videoQueue[queueSize][100];   //Video streaming queue de tamanho fixo.
-    char otherQueue[queueSize][100];   //Other services queue de tamanho fixo.
+    videoQueue = malloc(sizeof(char[queueSize][100]));   //Inicializa a video streaming queue.
 
     pthread_t receiver_id, sender_id;
 
-    initThreads(videoQueue);
+    initThreads();
     pthread_join(receiver_id, NULL);
     pthread_join(sender_id, NULL);
 }

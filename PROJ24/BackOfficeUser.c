@@ -13,6 +13,18 @@ int main(int argc, char *argv[]) {
 
     char commandInput[100];
 
+    if (access(BACK_PIPE, F_OK) != -1) {   //Verifica se o named pipe BACK_PIPE já existe.
+        
+    }
+
+    else {
+        if (mkfifo(BACK_PIPE, 0666) == -1) {   //É criado o named pipe USER_PIPE.
+            perror("Error while creating USER_PIPE");
+
+            exit(1);
+        }
+    }
+
     while (true) {
         fgets(commandInput, sizeof(commandInput), stdin);
 
@@ -38,17 +50,8 @@ int main(int argc, char *argv[]) {
         }
 
         else { 
-            //TODO Criar named pipe BACK_PIPE aqui.
-
-            if (mkfifo(BACK_PIPE, 0666) == -1) {   //É criado o named pipe BACK_PIPE.
-                perror("Error while creating BACK_PIPE");
-
-                exit(1);
-            }
-
-            //writeLogFile("Named pipe BACK_PIPE is up!");
-
             if (strcmp(inputCommands, "data_stats\n") == 0) {   //Executa a operação data_stats.
+                
                 int fd = open(BACK_PIPE, O_WRONLY);
                 if(fd == -1){
                     perror("Error while opening BACK_PIPE");
@@ -63,21 +66,26 @@ int main(int argc, char *argv[]) {
 
                 close(fd); 
                 
-                // TODO ler estatisticas da message queue
                 message aux; bool flag = true;
-                while(flag){
-                    if(msgrcv(msgq_id, &aux, sizeof(struct message), 200, 0) == -1){
+
+                /*
+                while(flag) {   //TODO ler estatisticas da message queue
+                    if(msgrcv(msgq_id, &aux, sizeof(struct message), 200, 0) == -1) {
                         perror("Error while receiving stats from message queue");
-                        //writeLogFile("[BOU] Error while receiving stats from message queue");
+                        
                         exit(1);
                     }
 
                     printf("%s\n", aux.msg);
+
                     flag = false;
                 }
+                */
+               
             }
 
             else if (strcmp(inputCommands, "reset\n") == 0) {   //Executa a operação reset.
+                
                 int fd = open(BACK_PIPE, O_WRONLY);
                 if(fd == -1){
                     perror("Error while opening back_pipe");
