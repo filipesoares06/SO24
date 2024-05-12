@@ -31,7 +31,7 @@ int main(int argc, char *argv[]) {
     mobileUserId = getpid();   //Obtem o identificador do processo.
 
     if (access(USER_PIPE, F_OK) != -1) {   //Verifica se o named pipe USER_PIPE já existe.
-        printf("Named Pipe USER_PIPE is ready!\n");
+        
     }
 
     else {
@@ -69,6 +69,11 @@ int main(int argc, char *argv[]) {
     while (requestCounter < numAuthRequests) {   //Ciclo que itera até ao número máximo de pedidos de autorização ser alcançado.
         char authOrderStr[100];
 
+        bool verifyMusicService = false;
+        bool verifyVideoService = false;
+        bool verifySocialService = false;
+
+        /*
         if(msgrcv(msgq_id, &r_msg, sizeof(message), 10 + mobileUserId, 0) == -1) {   // TODO ler da message queue se recebeu alerta de 100%, se sim, termina.
             perror("Error while receiving message");
 
@@ -82,26 +87,60 @@ int main(int argc, char *argv[]) {
 
             exit(0);
         }
+        */
 
         clock_gettime(CLOCK_MONOTONIC, &currentTime);
 
-        long elapsedTime = (currentTime.tv_sec - lastTime.tv_sec) * 1000 + (currentTime.tv_nsec - lastTime.tv_nsec) / 1000000;    //Calcula o tempo decorrido desde a última mensagem enviada em ms.
-
+        long elapsedTime = (currentTime.tv_sec - lastTime.tv_sec) / (CLOCKS_PER_SEC / 1000000);    //Calcula o tempo decorrido desde a última mensagem enviada em ms.
+        
         const char *service;   //Determina de que serviço se trata de acordo com o tempo decorrido.
-        if (elapsedTime >= musicInterval) {
-            service = availableServices[2];   //MUSIC.
+        if (elapsedTime % musicInterval == 0) {   //MUSIC service.
+            service = availableServices[2];
+            
+            snprintf(authOrderStr, sizeof(authOrderStr), "%d#%s#%d", mobileUserId, service,reservedData);
+
+            fdWrite = write(fd, authOrderStr, strlen(authOrderStr) + 1);
+            if (fdWrite == -1) {
+                perror("Error while writing to named pipe USER_PIPE");
+
+                exit(1);
+            }
+
+            printf("%s\n", authOrderStr);
 
             lastTime = currentTime;
         } 
         
-        else if (elapsedTime >= socialInterval) {
-            service = availableServices[1];   //SOCIAL.
+        if (elapsedTime % socialInterval == 0) {   //SOCIAL service.
+            service = availableServices[1];
+
+            snprintf(authOrderStr, sizeof(authOrderStr), "%d#%s#%d", mobileUserId, service,reservedData);
+
+            fdWrite = write(fd, authOrderStr, strlen(authOrderStr) + 1);
+            if (fdWrite == -1) {
+                perror("Error while writing to named pipe USER_PIPE");
+
+                exit(1);
+            }
+
+            printf("%s\n", authOrderStr);
 
             lastTime = currentTime;
         } 
         
-        else if (elapsedTime >= videoInterval) {
-            service = availableServices[0];   //VIDEO.
+        if (elapsedTime % videoInterval == 0) {   //VIDEO service.
+            service = availableServices[0];
+
+            snprintf(authOrderStr, sizeof(authOrderStr), "%d#%s#%d", mobileUserId, service,reservedData);
+
+            fdWrite = write(fd, authOrderStr, strlen(authOrderStr) + 1);
+            if (fdWrite == -1) {
+                perror("Error while writing to named pipe USER_PIPE");
+
+                exit(1);
+            }
+
+            printf("%s\n", authOrderStr);
 
             lastTime = currentTime;
         } 
@@ -110,21 +149,9 @@ int main(int argc, char *argv[]) {
             continue;
         }
 
-        snprintf(authOrderStr, sizeof(authOrderStr), "%d#%s#%d", mobileUserId, service,reservedData);
-        fdWrite = write(fd, registerMessageStr, strlen(registerMessageStr)+1);
+        requestCounter++;
 
-        if (fdWrite == -1) {
-            perror("Error while writing to named pipe USER_PIPE");
-
-            exit(1);
-        }
-
-        printf("%s", authOrderStr);
-
-        usleep(1000); // sleeps for 1 ms
-
-        // TODO is this correct?
-        // TODO semaforo para o pipe ?? 
+        usleep(1000);   //Dorme durante 1ms.
     }
 
     close(fd);

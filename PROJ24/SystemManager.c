@@ -215,9 +215,34 @@ void initializeMessageQueue() {   //Método responsável por inicializar a messa
     int msgq_id = msgget(key, 0666 | IPC_CREAT);
 }
 
-void* receiverFunction() {   //Método responsável por implementar a thread receiver.
+void addVideoQueue(char videoQueue[][100], char *fdBuffer, int queueFront, int queueBack) {   //Método responsável por adicionar à video streaming queue.
+    //Adicionar semáforo.
+
+    if ((queueBack + 1) % shMemory -> queuePos == queueFront) {
+        writeLogFile("MESSAGE NOT ADDED: VIDEO STREAMING QUEUE MAX SIZE WAS REACHED");
+    } 
+    
+    else {
+        strncpy(videoQueue[queueBack], fdBuffer, sizeof(videoQueue[queueBack]));
+
+        printf("%s\n", videoQueue[queueBack]);   //Retirar. Apenas verifica se foi adicionar corretamente à queue.
+
+        queueBack = (queueBack + 1) % shMemory -> queuePos;
+    }
+
+    //Retirar semáforo.
+}
+
+void* receiverFunction(void* arg) {   //Método responsável por implementar a thread receiver.
     writeLogFile("THREAD RECEIVER CREATED");
     fflush(stdout);
+
+    char (*videoQueue)[100] = (char(*)[100]) arg;
+    char (*otherQueue)[100] = (char(*)[100]) arg;
+
+    int queueFront = 0;
+    int queueBack = 0;
+    char fdBuffer[64];
 
     int fd = open(USER_PIPE, O_RDONLY);   //Lê do named pipe USER_PIPE.
     if(fd == -1){
@@ -225,41 +250,53 @@ void* receiverFunction() {   //Método responsável por implementar a thread rec
         exit(1);
     }
 
-    char fdBuffer[64];
+    while (read(fd, fdBuffer, sizeof(fdBuffer)) > 0) {
+        //TODO Fazer distribuição pelas queues.
 
-    ssize_t fdMessage = read(fd, fdBuffer, sizeof(fdBuffer));   //TODO sizeof(fdBuffer) ou 64?
-    if (fdMessage == -1) {
-        perror("Error while reading from USER_PIPE");
-
-        exit(1);
+        addVideoQueue(videoQueue, fdBuffer, queueFront, queueBack);
     }
-
-    printf("%s\n", fdBuffer);
 
     close(fd);
 
-    return NULL;
+    pthread_exit(NULL);
 }
 
 void* senderFunction() {   //Método responsável por implementar a thread sender.
     writeLogFile("THREAD SENDER CREATED");
     fflush(stdout);
 
-    return NULL;
+    pthread_exit(NULL);
 }
 
-void initThreads() {   //Método responsável por inicializar as thread receiver e sender.
-    pthread_create(&receiverThread, NULL, receiverFunction, NULL);
+void initThreads(char videoQueue[][100]) {   //Método responsável por inicializar as thread receiver e sender.
+    pthread_create(&receiverThread, NULL, receiverFunction, (void*) videoQueue);
     pthread_create(&senderThread, NULL, senderFunction, NULL);
 }
 
 void authorizationRequestManagerFunction() {   //Método responsável por implementar o authorization request manager.
     writeLogFile("PROCESS AUTHORIZATION_REQUEST_MANAGER CREATED");
 
-    pthread_t receiver_id, sender_id;
-    
-    initThreads();
+    if (access(USER_PIPE, F_OK) != -1) {   //Verifica se o named pipe USER_PIPE já existe.
+        writeLogFile("NAMED PIPE USER_PIPE IS READY!");
+    }
 
+    else {
+        if (mkfifo(USER_PIPE, 0666) == -1) {   //É criado o named pipe USER_PIPE.
+            perror("Error while creating USER_PIPE");
+
+            exit(1);
+        }
+
+        writeLogFile("NAMED PIPE USER_PIPE IS READY!");
+    }
+    
+    int queueSize = shMemory -> queuePos;
+    char videoQueue[queueSize][100];   //Video streaming queue de tamanho fixo.
+    char otherQueue[queueSize][100];   //Other services queue de tamanho fixo.
+
+    pthread_t receiver_id, sender_id;
+
+    initThreads(videoQueue);
     pthread_join(receiver_id, NULL);
     pthread_join(sender_id, NULL);
 }
@@ -295,7 +332,7 @@ int main(int argc, char *argv[]) {
 
     initializeMutexSemaphore();
 
-    initializeLogFile();
+    initializeLogFile();   //Inicializa o logFile.
 
     writeLogFile("5G_AUTH_PLATFORM SIMULATOR STARTING");
 

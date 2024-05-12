@@ -19,19 +19,13 @@
 #include <sys/stat.h>
 #include <sys/msg.h>
 #include <sys/wait.h>
-//#include <mqueue.h>
+#include <mqueue.h>
 
 #define USER_PIPE "/tmp/userpipe"
 #define BACK_PIPE "/tmp/backpipe"
 
 sem_t *mutexSemaphore;
 sem_t *shmSemaphore;
-
-/*int queuePos;   //Variáveis que representam os valores do ficheiro de configurações.
-int maxAuthServers;
-int authProcTime;
-int maxVideoWait;
-int maxOthersWait;*/
 
 typedef struct message {   //Estrutura que representa uma mensagem a enviar para o named pipe USER_PIPE com os pedidos de autorização.
     long mtype; // Alertas: 10 + user_id ; Stats: 200
@@ -86,10 +80,11 @@ void backOfficeUserCommands();
 int createSharedMemory(int shmSize);
 sharedMemory* attatchSharedMemory(int shmId);
 void initializeSharedMemory();
-void* receiverFunction();
+void* receiverFunction(void* arg);
 void* senderFunction();
 void initThreads();
 void authorizationRequestManagerFunction();
+void addVideoQueue(char videoQueue[][100], char *fdBuffer, int queueFront, int queueBack);
 
 void monitor_engine_func();
 int random_number(int min, int max);
