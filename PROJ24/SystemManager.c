@@ -237,18 +237,28 @@ void* receiverFunction() {   //Método responsável por implementar a thread rec
     writeLogFile("THREAD RECEIVER CREATED");
     fflush(stdout);
     
-    int fdUserPipe = open(USER_PIPE, O_RDONLY);
-    int fdBackPipe = open(BACK_PIPE, O_RDONLY);
-    
-    if (fdUserPipe == -1 || fdBackPipe == -1) {
-        perror("Error while opening named pipes");
-        
-        exit(EXIT_FAILURE);
+    int fdUserPipe = open(USER_PIPE, O_RDONLY);   //É aberto o named pipe USER_PIPE para leitura. Named pipe é criado no Authorization Request Manager.
+    if(fdUserPipe == -1){
+        perror("Error while opening BACK_PIPE");
+                    
+        exit(1);
     }
-    
+
+    printf("Ainda não");
+    fflush(stdout);
+
+    int fdBackPipe = open(BACK_PIPE, O_RDONLY);   //É aberto o named pipe BACK_PIPE para leitura. Named pipe é criado no Authorization Request Manager.
+    if(fdBackPipe == -1){
+        perror("Error while opening BACK_PIPE");
+                    
+        exit(1);
+    }
+
+    printf("ola");
+
     fd_set read_fds;
     int fdMax = (fdUserPipe > fdBackPipe) ? fdUserPipe : fdBackPipe;
-    
+
     while (1) {
         FD_ZERO(&read_fds);
         FD_SET(fdUserPipe, &read_fds);
@@ -286,6 +296,7 @@ void* receiverFunction() {   //Método responsável por implementar a thread rec
                 if(sscanf(fdBuffer, "%d#%d", &n1, &n2) == 2) {   //Mensagem de registo.
                     // TODO registar user. Guardar valores na shared memory.
                     printf("%s\n", fdBuffer);
+                    
                 }
 
                 else if(sscanf(fdBuffer, "%d#127[^#]#%d", &n1, &s, &n2) == 3){
@@ -305,7 +316,7 @@ void* receiverFunction() {   //Método responsável por implementar a thread rec
             }
         }
 
-        if (FD_ISSET(fdBackPipe, &read_fds)) {   //Named pipe BACK_PIPE.
+        if (fdBackPipe != -1 && FD_ISSET(fdBackPipe, &read_fds)) {   //Named pipe BACK_PIPE.
             char buffer[PIPE_BUF];
 
             ssize_t bytes_read = read(fdBackPipe, buffer, sizeof(buffer));

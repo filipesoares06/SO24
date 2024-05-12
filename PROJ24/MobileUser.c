@@ -30,19 +30,7 @@ int main(int argc, char *argv[]) {
     pid_t mobileUserId;   //Id do MobileUser, que corresponderá ao PID (Identificador do processo) do processo.
     mobileUserId = getpid();   //Obtem o identificador do processo.
 
-    if (access(USER_PIPE, F_OK) != -1) {   //Verifica se o named pipe USER_PIPE já existe.
-        
-    }
-
-    else {
-        if (mkfifo(USER_PIPE, 0666) == -1) {   //É criado o named pipe USER_PIPE.
-            perror("Error while creating USER_PIPE");
-
-            exit(1);
-        }
-    }
-
-    int fd = open(USER_PIPE, O_WRONLY);   //É aberto o named pipe USER_PIPE.
+    int fd = open(USER_PIPE, O_WRONLY);   //É aberto o named pipe USER_PIPE para escrita. Named pipe é criado no Authorization Request Manager.
     if(fd == -1) {
         perror("Error while opening USER_PIPE");
 

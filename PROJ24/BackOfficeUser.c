@@ -9,21 +9,16 @@ int main(int argc, char *argv[]) {
         return -1;
     }
 
+    int fd = open(BACK_PIPE, O_WRONLY);   //É aberto o named pipe BACK_PIPE para escrita. Named pipe é criado no Authorization Request Manager.
+    if(fd == -1){
+        perror("Error while opening BACK_PIPE");
+                    
+        exit(1);
+    }
+
     backOfficeUserCommands();   //Imprime os comandos disponíveis.
 
     char commandInput[100];
-
-    if (access(BACK_PIPE, F_OK) != -1) {   //Verifica se o named pipe BACK_PIPE já existe.
-        
-    }
-
-    else {
-        if (mkfifo(BACK_PIPE, 0666) == -1) {   //É criado o named pipe USER_PIPE.
-            perror("Error while creating USER_PIPE");
-
-            exit(1);
-        }
-    }
 
     while (true) {
         fgets(commandInput, sizeof(commandInput), stdin);
@@ -51,14 +46,6 @@ int main(int argc, char *argv[]) {
 
         else { 
             if (strcmp(inputCommands, "data_stats\n") == 0) {   //Executa a operação data_stats.
-                
-                int fd = open(BACK_PIPE, O_WRONLY);
-                if(fd == -1){
-                    perror("Error while opening BACK_PIPE");
-                    
-                    exit(1);
-                }
-
                 char msg[64];
                 snprintf(msg, sizeof(msg), "%d#data_stats", backOfficeUserId);
 
