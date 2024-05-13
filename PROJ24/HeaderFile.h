@@ -28,6 +28,8 @@
 
 sem_t *mutexSemaphore;
 sem_t *shmSemaphore;
+sem_t videoQueueSemaphore;
+sem_t otherQueueSemaphore;
 
 typedef struct message {   //Estrutura que representa uma mensagem a enviar para o named pipe USER_PIPE com os pedidos de autorização.
     long mtype; // Alertas: 10 + user_id ; Stats: 200
@@ -75,7 +77,8 @@ key_t key;
 
 int fd_sender_pipes[N_AUTH_ENG][2]; // TODO ha forma de trocar o NAUTHENG pelo numero de auth engines inserido?
 
-char (*videoQueue)[100];
+char (*videoQueue)[100];   //Queue para video streaming services.
+char (*otherQueue)[100];   //Queue para other services.
 
 void initializeLogFile();
 void writeLogFile(char *strMessage);
@@ -88,7 +91,8 @@ void* receiverFunction();
 void* senderFunction();
 void initThreads();
 void authorizationRequestManagerFunction();
-void addVideoQueue(char *fdBuffer, int queueFront, int queueBack);
+void addVideoQueue(char *fdBuffer);
+void addOtherQueue(char *fdBuffer);
 
 void monitor_engine_func();
 int random_number(int min, int max);

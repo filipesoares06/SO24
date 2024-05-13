@@ -2,6 +2,12 @@
 
 FILE *logFile;
 
+int queueFrontVideo = 0;
+int queueBackVideo = 0;
+            
+int queueFrontOther = 0;
+int queueBackOther = 0;
+
 void initializeMutexSemaphore() {   //Método responsável por inicializar um semáforo mutex
     sem_unlink("MUTEX");
     sem_unlink("SHM_SEM");
@@ -215,56 +221,72 @@ void initializeMessageQueue() {   //Método responsável por inicializar a messa
     int msgq_id = msgget(key, 0666 | IPC_CREAT);
 }
 
-void addVideoQueue(char *fdBuffer, int queueFront, int queueBack) {   //Método responsável por adicionar à video streaming queue.
-    //Adicionar semáforo.
+void addVideoQueue(char *fdBuffer) {   //Método responsável por adicionar à video streaming queue.
+    sem_wait(&videoQueueSemaphore);   //Semáforo para aceder à video streaming queue.
 
-    if ((queueBack + 1) % shMemory -> queuePos == queueFront) {
+    if ((queueBackVideo + 1) % (shMemory -> queuePos) == queueFrontVideo) {
         writeLogFile("MESSAGE NOT ADDED: VIDEO STREAMING QUEUE MAX SIZE WAS REACHED");
     } 
     
     else {
-        strncpy(videoQueue[queueBack], fdBuffer, sizeof(videoQueue[queueBack]));
+        strncpy(videoQueue[queueBackVideo], fdBuffer, sizeof(videoQueue[queueBackVideo]));
+        
+        //printf("%s - %s\n", videoQueue[queueBackVideo], fdBuffer);   //Retirar. Apenas verifica se foi adicionar corretamente à queue.
 
-        printf("%s\n", videoQueue[queueBack]);   //Retirar. Apenas verifica se foi adicionar corretamente à queue.
-
-        queueBack = (queueBack + 1) % shMemory -> queuePos;
+        queueBackVideo = (queueBackVideo + 1) % (shMemory -> queuePos);
     }
 
-    //Retirar semáforo.
+    sem_post(&videoQueueSemaphore);
+}
+
+void addOtherQueue(char *fdBuffer) {   //Método responsável por adicionar à other services queue.
+    sem_wait(&otherQueueSemaphore);   //Semáforo para aceder à other services queue.
+
+    if ((queueBackOther + 1) % shMemory -> queuePos == queueFrontOther) {
+        writeLogFile("MESSAGE NOT ADDED: OTHER SERVICES QUEUE MAX SIZE WAS REACHED");
+    } 
+    
+    else {
+        strncpy(otherQueue[queueBackOther], fdBuffer, sizeof(otherQueue[queueBackOther]));
+
+        //printf("%s - %s\n", otherQueue[queueBackOther], fdBuffer);   //Retirar. Apenas verifica se foi adicionar corretamente à queue.
+
+        queueBackOther = (queueBackOther + 1) % shMemory -> queuePos;
+    }
+
+    sem_post(&otherQueueSemaphore);
 }
 
 void* receiverFunction() {   //Método responsável por implementar a thread receiver.
     writeLogFile("THREAD RECEIVER CREATED");
     fflush(stdout);
     
-    int fdUserPipe = open(USER_PIPE, O_RDONLY);   //É aberto o named pipe USER_PIPE para leitura. Named pipe é criado no Authorization Request Manager.
+    int fdUserPipe = open(USER_PIPE, O_RDONLY | O_NONBLOCK);   //É aberto o named pipe USER_PIPE para leitura. Named pipe é criado no Authorization Request Manager.
+
     if(fdUserPipe == -1){
         perror("Error while opening BACK_PIPE");
-                    
+                        
         exit(1);
     }
 
-    printf("Ainda não");
-    fflush(stdout);
+    int fdBackPipe = open(BACK_PIPE, O_RDONLY | O_NONBLOCK);   //É aberto o named pipe BACK_PIPE para leitura. Named pipe é criado no Authorization Request Manager.
 
-    int fdBackPipe = open(BACK_PIPE, O_RDONLY);   //É aberto o named pipe BACK_PIPE para leitura. Named pipe é criado no Authorization Request Manager.
     if(fdBackPipe == -1){
         perror("Error while opening BACK_PIPE");
-                    
+                        
         exit(1);
     }
-
-    printf("ola");
-
+    
     fd_set read_fds;
+    FD_ZERO(&read_fds);
+    FD_SET(fdUserPipe, &read_fds);
+    FD_SET(fdBackPipe, &read_fds);
+
     int fdMax = (fdUserPipe > fdBackPipe) ? fdUserPipe : fdBackPipe;
 
     while (1) {
-        FD_ZERO(&read_fds);
-        FD_SET(fdUserPipe, &read_fds);
-        FD_SET(fdBackPipe, &read_fds);
-
         int activity = select(fdMax + 1, &read_fds, NULL, NULL, NULL);   // Use select() to wait for activity on pipes
+
         if (activity == -1) {
             perror("Error selecting pipe");
 
@@ -272,8 +294,6 @@ void* receiverFunction() {   //Método responsável por implementar a thread rec
         }
 
         if (FD_ISSET(fdUserPipe, &read_fds)) {   //Name pipe USER_PIPE.
-            int queueFront = 0;
-            int queueBack = 0;
             char fdBuffer[PIPE_BUF];
 
             ssize_t bytes_read = read(fdUserPipe, fdBuffer, sizeof(fdBuffer));
@@ -291,7 +311,7 @@ void* receiverFunction() {   //Método responsável por implementar a thread rec
             
             else {
                 int n1, n2;
-                char s[128];
+                char serviceToken[128];
                 
                 if(sscanf(fdBuffer, "%d#%d", &n1, &n2) == 2) {   //Mensagem de registo.
                     // TODO registar user. Guardar valores na shared memory.
@@ -299,19 +319,24 @@ void* receiverFunction() {   //Método responsável por implementar a thread rec
                     
                 }
 
-                else if(sscanf(fdBuffer, "%d#127[^#]#%d", &n1, &s, &n2) == 3){
-                    if (strcmp(s, "VIDEO")){   //Envia para a video streaming queue.
-                        addVideoQueue(fdBuffer, queueFront, queueBack);
-                        printf("%s\n", fdBuffer);
+                else if(sscanf(fdBuffer, "%d#%s#%d", &n1, &serviceToken, &n2) == 2) {
+                    char *serviceType = strtok(serviceToken, "#");
+                    int dataService = atoi(strtok(NULL, "#"));
+
+                    if (strcmp(serviceType, "VIDEO") == 0){   //Envia para a video streaming queue.
+                        addVideoQueue(fdBuffer);
+                        
+                        //printf("%s\n", fdBuffer, videoQueue[0]);
+                        //fflush(stdout);
                     }
 
                     else {   //Envia para a other services queue.
-                        
+                        addOtherQueue(fdBuffer);
                     }
                 }
 
                 else {
-                    perror("[RT] Wrong user request format\n");
+                    perror("[RT] Wrong user request format");
                 }
             }
         }
@@ -360,7 +385,7 @@ void authorizationRequestManagerFunction() {   //Método responsável por implem
     writeLogFile("PROCESS AUTHORIZATION_REQUEST_MANAGER CREATED");
 
     if (access(USER_PIPE, F_OK) != -1) {   //Verifica se o named pipe USER_PIPE já existe.
-        writeLogFile("NAMED PIPE USER_PIPE IS READY!");
+        writeLogFile("NAMED PIPE USER_PIPE IS READY");
     }
 
     else {
@@ -374,7 +399,7 @@ void authorizationRequestManagerFunction() {   //Método responsável por implem
     }
     
     if (access(BACK_PIPE, F_OK) != -1) {   //Verifica se o named pipe BACK_PIPE já existe.
-        writeLogFile("NAMED PIPE BACK_PIPE IS READY!");
+        writeLogFile("NAMED PIPE BACK_PIPE IS READY");
     }
 
     else {
@@ -384,11 +409,12 @@ void authorizationRequestManagerFunction() {   //Método responsável por implem
             exit(1);
         }
 
-        writeLogFile("NAMED PIPE BACK_PIPE IS READY!");
+        writeLogFile("NAMED PIPE BACK_PIPE IS READY");
     }
 
     int queueSize = shMemory -> queuePos;
     videoQueue = malloc(sizeof(char[queueSize][100]));   //Inicializa a video streaming queue.
+    otherQueue = malloc(sizeof(char[queueSize][100]));   //Incializa a other services queue.
 
     pthread_t receiver_id, sender_id;
 
@@ -435,6 +461,9 @@ int main(int argc, char *argv[]) {
     readConfigFile(argv[1]);   //Lê o ficheiro de configurações passado como parâmetro.
 
     writeLogFile("PROCESS SYSTEM MANAGER CREATED");
+
+    sem_init(&videoQueueSemaphore, 0, 1);   //Inicializa o semáforo para a video streaming queue.
+    sem_init(&otherQueueSemaphore, 0, 1);   //Inicializa o semáforo para a other services queue.
 
     createProcess(authorizationRequestManager, NULL);
 
