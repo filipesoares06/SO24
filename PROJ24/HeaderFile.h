@@ -80,6 +80,8 @@ int fd_sender_pipes[N_AUTH_ENG][2]; // TODO ha forma de trocar o NAUTHENG pelo n
 char (*videoQueue)[100];
 char (*otherServicesQueue)[100];
 
+bool auth_eng_state[N_AUTH_ENG];
+
 void initializeLogFile();
 void writeLogFile(char *strMessage);
 int readConfigFile(char *fileName);
