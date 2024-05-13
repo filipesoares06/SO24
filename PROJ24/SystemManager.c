@@ -326,7 +326,8 @@ void* receiverFunction() {   //Método responsável por implementar a thread rec
                 char s[128];
                 
                 if(sscanf(fdBuffer, "%d#%d", &n1, &n2) == 2) {   //Mensagem de registo.
-                    // TODO registar user. Guardar valores na shared memory.
+                    // TODO NÃO É PARA REGISTAR! É PARA ENVIAR PARA O SENDER E O SENDER ENVIA PARA O AUTH ENGINE ONDE ELE FAZ O REGIST
+                    // TODO APROVEITA O CODIGO QUE ESTÁ AQUI
                     mobileUser aux_user;
                     aux_user.user_id = n1;
                     aux_user.inicialPlafond = n2;
