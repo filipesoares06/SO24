@@ -19,7 +19,7 @@
 #include <sys/stat.h>
 #include <sys/msg.h>
 #include <sys/wait.h>
-#include <mqueue.h>
+//#include <mqueue.h>
 #include <sys/select.h>
 #include <limits.h>
 
@@ -28,6 +28,8 @@
 
 sem_t *mutexSemaphore;
 sem_t *shmSemaphore;
+sem_t *vqSemaphore; // video queue
+sem_t *osSemaphore; // other services
 
 typedef struct message {   //Estrutura que representa uma mensagem a enviar para o named pipe USER_PIPE com os pedidos de autorização.
     long mtype; // Alertas: 10 + user_id ; Stats: 200
@@ -76,6 +78,7 @@ key_t key;
 int fd_sender_pipes[N_AUTH_ENG][2]; // TODO ha forma de trocar o NAUTHENG pelo numero de auth engines inserido?
 
 char (*videoQueue)[100];
+char (*otherServicesQueue)[100];
 
 void initializeLogFile();
 void writeLogFile(char *strMessage);

@@ -7,12 +7,27 @@ void initializeMutexSemaphore() {   //Método responsável por inicializar um se
     sem_unlink("SHM_SEM");
 
     mutexSemaphore = sem_open("MUTEX", O_CREAT | O_EXCL, 0766, 1);
+    if (mutexSemaphore == SEM_FAILED) {
+        writeLogFile("[SM] MUTEX Semaphore Creation Failed\n");
+        exit(1);
+    }
 
     // TODO vê se há algum problema em ter isto tudo junto ; 0766 ou 0700
     shmSemaphore = sem_open("SHM_SEM", O_CREAT | O_EXCL, 0766, 1);
-
     if (shmSemaphore == SEM_FAILED) {
         writeLogFile("[SM] Shared Memory Semaphore Creation Failed\n");
+        exit(1);
+    }
+
+    vqSemaphore = sem_open("VQ_SEM", O_CREAT | O_EXCL, 0766, 1);
+    if (vqSemaphore == SEM_FAILED) {
+        writeLogFile("[SM] VIDEO QUEUE Semaphore Creation Failed\n");
+        exit(1);
+    }
+
+    osSemaphore = sem_open("VQ_SEM", O_CREAT | O_EXCL, 0766, 1);
+    if (osSemaphore == SEM_FAILED) {
+        writeLogFile("[SM] OTHER SERVICES QUEUE Semaphore Creation Failed\n");
         exit(1);
     }
 }
@@ -215,22 +230,49 @@ void initializeMessageQueue() {   //Método responsável por inicializar a messa
     int msgq_id = msgget(key, 0666 | IPC_CREAT);
 }
 
-void addVideoQueue(char *fdBuffer, int queueFront, int queueBack) {   //Método responsável por adicionar à video streaming queue.
-    //Adicionar semáforo.
+void addOtherServQueue(char *fdBuffer, int queueFront, int queueBack){
+    int aux_qp;
+    sem_wait(shmSemaphore);
+    aux_qp = shMemory->queuePos;
+    sem_post(shmSemaphore);
 
-    if ((queueBack + 1) % shMemory -> queuePos == queueFront) {
+    if ((queueBack + 1) % aux_qp == queueFront) {
         writeLogFile("MESSAGE NOT ADDED: VIDEO STREAMING QUEUE MAX SIZE WAS REACHED");
     } 
+
     
     else {
+        sem_wait(osSemaphore);
+        strncpy(otherServicesQueue[queueBack], fdBuffer, sizeof(otherServicesQueue[queueBack]));
+        sem_post(osSemaphore);
+
+        //printf("%s\n", videoQueue[queueBack]);   //Retirar. Apenas verifica se foi adicionar corretamente à queue.
+
+        queueBack = (queueBack + 1) % aux_qp;
+    }
+}
+
+void addVideoQueue(char *fdBuffer, int queueFront, int queueBack) {   //Método responsável por adicionar à video streaming queue.
+    int aux_qp;
+    sem_wait(shmSemaphore);
+    aux_qp = shMemory->queuePos;
+    sem_post(shmSemaphore);
+
+    if ((queueBack + 1) % aux_qp == queueFront) {
+        writeLogFile("MESSAGE NOT ADDED: VIDEO STREAMING QUEUE MAX SIZE WAS REACHED");
+    } 
+
+    
+    else {
+        sem_wait(vqSemaphore);
         strncpy(videoQueue[queueBack], fdBuffer, sizeof(videoQueue[queueBack]));
+        sem_post(vqSemaphore);
 
-        printf("%s\n", videoQueue[queueBack]);   //Retirar. Apenas verifica se foi adicionar corretamente à queue.
+        //printf("%s\n", videoQueue[queueBack]);   //Retirar. Apenas verifica se foi adicionar corretamente à queue.
 
-        queueBack = (queueBack + 1) % shMemory -> queuePos;
+        queueBack = (queueBack + 1) % aux_qp;
     }
 
-    //Retirar semáforo.
 }
 
 void* receiverFunction() {   //Método responsável por implementar a thread receiver.
@@ -285,17 +327,46 @@ void* receiverFunction() {   //Método responsável por implementar a thread rec
                 
                 if(sscanf(fdBuffer, "%d#%d", &n1, &n2) == 2) {   //Mensagem de registo.
                     // TODO registar user. Guardar valores na shared memory.
+                    mobileUser aux_user;
+                    aux_user.user_id = n1;
+                    aux_user.inicialPlafond = n2;
+                    // aux_user.numAuthRequests = 0; aux_user.videoInterval = 0; aux_user.musicInterval = 0;
+                    int n_users;
+                    sem_wait(shmSemaphore);
+                    n_users = shMemory->n_users;
+                    sem_post(shmSemaphore);
+
+                    for(int i = 0; i < n_users; i++){
+                        sem_wait(shmSemaphore);
+                        if(&(shMemory->mobileUsers[i]) == NULL){
+                            shMemory->mobileUsers[i] = aux_user;
+                            sem_post(shmSemaphore);
+                            #if DEBUG
+                            printf("inserted in shm %s\n", fdBuffer);
+                            #endif
+                            break;
+                        }
+                        sem_post(shmSemaphore);
+                        
+                    }
+                    #if DEBUG
                     printf("%s\n", fdBuffer);
+                    #endif
                 }
 
                 else if(sscanf(fdBuffer, "%d#127[^#]#%d", &n1, &s, &n2) == 3){
                     if (strcmp(s, "VIDEO")){   //Envia para a video streaming queue.
                         addVideoQueue(fdBuffer, queueFront, queueBack);
+                        #if DEBUG
                         printf("%s\n", fdBuffer);
+                        #endif
                     }
 
                     else {   //Envia para a other services queue.
-                        
+                        addOtherServQueue(fdBuffer, queueFront, queueBack);
+                        #if DEBUG
+                        printf("%s\n", fdBuffer);
+                        #endif
                     }
                 }
 
@@ -306,6 +377,9 @@ void* receiverFunction() {   //Método responsável por implementar a thread rec
         }
 
         if (FD_ISSET(fdBackPipe, &read_fds)) {   //Named pipe BACK_PIPE.
+            int queueFront = 0;
+            int queueBack = 0;
+            
             char buffer[PIPE_BUF];
 
             ssize_t bytes_read = read(fdBackPipe, buffer, sizeof(buffer));
@@ -322,7 +396,10 @@ void* receiverFunction() {   //Método responsável por implementar a thread rec
             } 
             
             else {   //Envia para a other services queue.
-                
+                addOtherServQueue(buffer, queueFront, queueBack);
+                #if DEBUG
+                printf("%s\n", fdBuffer);
+                #endif
             }
         }
     }
