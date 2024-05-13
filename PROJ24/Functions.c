@@ -210,20 +210,7 @@ int random_number(int min, int max) {
     return min + rand() / (RAND_MAX / (max - min + 1) + 1);
 }
 
-void sigint(int signum)
-{
-    //writeLogFile("SIGNAL SIGINT RECEIVED");
-    //writeLogFile("SIMULATOR WAITING FOR LAST TASKS TO FINISH");
-
-    for (int i = 0; i < 4; i++)
-        wait(NULL); // espera que os processos acabem e, depois, limpa os recursos.
-
-    clean_resources();
-
-    exit(0);
-}
-
-void clean_resources() {
+void cleanResources() {   //Método responsável por terminar o programa e limpar todos os recursos.
     //writeLogFile("SYSTEM SHUTTING DOWN");
 
     wait(NULL);
@@ -237,9 +224,9 @@ void clean_resources() {
     shmdt(shMemory);
     shmctl(shmId, IPC_RMID, NULL);
 
-    //TODO close pipes before unlinks
-    for(int i = 0; i < N_AUTH_ENG; i++){
+    for(int i = 0; i < N_AUTH_ENG; i++) {   //TODO close pipes before unlinks
         close(fd_sender_pipes[i][0]);
+
         close(fd_sender_pipes[i][1]);
     }
 
@@ -252,4 +239,16 @@ void clean_resources() {
     msgctl(msgget(ftok("msgfile", 'A'), 0666 | IPC_CREAT), IPC_RMID, NULL);
 
     //TODO fechar log
+}
+
+void sigint(int signum) {   //Método responsável por receber o sinal sigint.
+    //writeLogFile("SIGNAL SIGINT RECEIVED");
+    //writeLogFile("SIMULATOR WAITING FOR LAST TASKS TO FINISH");
+
+    for (int i = 0; i < 4; i++)
+        wait(NULL);   //Espera que os processos acabem e, depois, limpa os recursos.
+
+    cleanResources();
+
+    exit(0);
 }

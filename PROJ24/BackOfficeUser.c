@@ -47,11 +47,10 @@ int main(int argc, char *argv[]) {
         else { 
             if (strcmp(inputCommands, "data_stats\n") == 0) {   //Executa a operação data_stats.
                 char msg[64];
+
                 snprintf(msg, sizeof(msg), "%d#data_stats", backOfficeUserId);
 
-                write(fd, msg, strlen(msg) + 1);
-
-                close(fd); 
+                write(fd, msg, strlen(msg) + 1); 
                 
                 message aux; bool flag = true;
 
@@ -72,23 +71,16 @@ int main(int argc, char *argv[]) {
             }
 
             else if (strcmp(inputCommands, "reset\n") == 0) {   //Executa a operação reset.
-                
-                int fd = open(BACK_PIPE, O_WRONLY);
-                if(fd == -1){
-                    perror("Error while opening back_pipe");
-
-                    exit(1);
-                }
-
                 char msg[64];
+
                 snprintf(msg, sizeof(msg), "%d#reset", backOfficeUserId);
 
                 write(fd, msg, strlen(msg) + 1);
-
-                close(fd);
             }
         }
     }
+
+    close(fd);
 
     return 0;
 }

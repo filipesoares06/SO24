@@ -257,6 +257,10 @@ void addOtherQueue(char *fdBuffer) {   //Método responsável por adicionar à o
     sem_post(&otherQueueSemaphore);
 }
 
+char *getFromQueue() {   //Método responsável por retirar da queue.
+
+}
+
 void* receiverFunction() {   //Método responsável por implementar a thread receiver.
     writeLogFile("THREAD RECEIVER CREATED");
     fflush(stdout);
@@ -296,14 +300,14 @@ void* receiverFunction() {   //Método responsável por implementar a thread rec
         if (FD_ISSET(fdUserPipe, &read_fds)) {   //Name pipe USER_PIPE.
             char fdBuffer[PIPE_BUF];
 
-            ssize_t bytes_read = read(fdUserPipe, fdBuffer, sizeof(fdBuffer));
-            if (bytes_read == -1) {
+            ssize_t bytesRead = read(fdUserPipe, fdBuffer, sizeof(fdBuffer));
+            if (bytesRead == -1) {
                 perror("Error reading from USER_PIPE");
 
                 exit(EXIT_FAILURE);
             } 
             
-            else if (bytes_read == 0) {   // TODO isto pode dar merda
+            else if (bytesRead == 0) {   // TODO isto pode dar merda
                 close(fdUserPipe);
 
                 fdUserPipe = -1;
@@ -342,23 +346,25 @@ void* receiverFunction() {   //Método responsável por implementar a thread rec
         }
 
         if (fdBackPipe != -1 && FD_ISSET(fdBackPipe, &read_fds)) {   //Named pipe BACK_PIPE.
-            char buffer[PIPE_BUF];
+            char fdBuffer[PIPE_BUF];
 
-            ssize_t bytes_read = read(fdBackPipe, buffer, sizeof(buffer));
-            if (bytes_read == -1) {
+            ssize_t bytesRead = read(fdBackPipe, fdBuffer, sizeof(fdBuffer));
+            if (bytesRead == -1) {
                 perror("Error reading from BACK_PIPE");
 
                 exit(EXIT_FAILURE);
             } 
             
-            else if (bytes_read == 0) {   // TODO isto pode dar merda.
+            else if (bytesRead == 0) {   // TODO isto pode dar merda.
                 close(fdBackPipe);
 
                 fdBackPipe = -1;
             } 
             
             else {   //Envia para a other services queue.
-                
+                addOtherQueue(fdBuffer);
+
+                printf("%s\n", fdBuffer);
             }
         }
     }
@@ -372,6 +378,39 @@ void* receiverFunction() {   //Método responsável por implementar a thread rec
 void* senderFunction() {   //Método responsável por implementar a thread sender.
     writeLogFile("THREAD SENDER CREATED");
     fflush(stdout);
+
+    char *queueMessage;
+
+    while (1) {
+        queueMessage = getFromQueue();
+
+        if (queueMessage != NULL) {
+            bool aeFlag = true;
+
+            while (aeFlag) {
+                int numAuthEngines = shMemory -> maxAuthServers;   //Meter semáforo.
+
+                for (int i = 0; i < numAuthEngines; i++) {
+                    
+                }
+            }
+        }
+
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     pthread_exit(NULL);
 }

@@ -93,10 +93,10 @@ void initThreads();
 void authorizationRequestManagerFunction();
 void addVideoQueue(char *fdBuffer);
 void addOtherQueue(char *fdBuffer);
+void cleanResources();
 
 void monitor_engine_func();
 int random_number(int min, int max);
-void clean_resources();
 
 void sigint(int signum);
 
