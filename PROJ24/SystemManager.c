@@ -222,39 +222,49 @@ void initializeMessageQueue() {   //Método responsável por inicializar a messa
 }
 
 void addVideoQueue(char *fdBuffer) {   //Método responsável por adicionar à video streaming queue.
-    sem_wait(&videoQueueSemaphore);   //Semáforo para aceder à video streaming queue.
-
-    if ((queueBackVideo + 1) % (shMemory -> queuePos) == queueFrontVideo) {
+    int aux_qp;
+    sem_wait(shmSemaphore);
+    aux_qp = shMemory->queuePos;
+    sem_post(shmSemaphore);
+    
+    if ((queueBackVideo + 1) % (aux_qp) == queueFrontVideo) {
         writeLogFile("MESSAGE NOT ADDED: VIDEO STREAMING QUEUE MAX SIZE WAS REACHED");
     } 
     
     else {
+        sem_wait(videoQueueSemaphore);   //Semáforo para aceder à video streaming queue.
         strncpy(videoQueue[queueBackVideo], fdBuffer, sizeof(videoQueue[queueBackVideo]));
-        
-        //printf("%s - %s\n", videoQueue[queueBackVideo], fdBuffer);   //Retirar. Apenas verifica se foi adicionar corretamente à queue.
-
-        queueBackVideo = (queueBackVideo + 1) % (shMemory -> queuePos);
+        sem_post(videoQueueSemaphore);
+#if DEBUG
+        printf("%s - %s\n", videoQueue[queueBackVideo], fdBuffer);   //Retirar. Apenas verifica se foi adicionar corretamente à queue.
+#endif
+        queueBackVideo = (queueBackVideo + 1) % (aux_qp);
     }
 
-    sem_post(&videoQueueSemaphore);
+    
 }
 
 void addOtherQueue(char *fdBuffer) {   //Método responsável por adicionar à other services queue.
-    sem_wait(&otherQueueSemaphore);   //Semáforo para aceder à other services queue.
+    int aux_qp;
+    sem_wait(shmSemaphore);
+    aux_qp = shMemory->queuePos;
+    sem_post(shmSemaphore);
 
-    if ((queueBackOther + 1) % shMemory -> queuePos == queueFrontOther) {
+    if ((queueBackOther + 1) % aux_qp == queueFrontOther) {
         writeLogFile("MESSAGE NOT ADDED: OTHER SERVICES QUEUE MAX SIZE WAS REACHED");
     } 
     
     else {
+        sem_wait(otherQueueSemaphore); //Semáforo para aceder à other services queue.
         strncpy(otherQueue[queueBackOther], fdBuffer, sizeof(otherQueue[queueBackOther]));
-
-        //printf("%s - %s\n", otherQueue[queueBackOther], fdBuffer);   //Retirar. Apenas verifica se foi adicionar corretamente à queue.
-
-        queueBackOther = (queueBackOther + 1) % shMemory -> queuePos;
+        sem_post(otherQueueSemaphore);
+#if DEBUG
+        printf("%s - %s\n", otherQueue[queueBackOther], fdBuffer);   //Retirar. Apenas verifica se foi adicionar corretamente à queue.
+#endif
+        queueBackOther = (queueBackOther + 1) % aux_qp;
     }
 
-    sem_post(&otherQueueSemaphore);
+    
 }
 
 char *getFromQueue() {   //Método responsável por retirar da queue.
@@ -318,8 +328,12 @@ void* receiverFunction() {   //Método responsável por implementar a thread rec
                 char serviceToken[128];
                 
                 if(sscanf(fdBuffer, "%d#%d", &n1, &n2) == 2) {   //Mensagem de registo.
-                    // TODO registar user. Guardar valores na shared memory.
-                    printf("%s\n", fdBuffer);
+                    // envia mensagem para a otherqueue
+                    addOtherQueue(fdBuffer);
+
+                    #if DEBUG
+                    printf("registration %s\n", fdBuffer);
+                    #endif
                     
                 }
 
@@ -330,7 +344,9 @@ void* receiverFunction() {   //Método responsável por implementar a thread rec
                     if (strcmp(serviceType, "VIDEO") == 0){   //Envia para a video streaming queue.
                         addVideoQueue(fdBuffer);
                         
-                        //printf("%s\n", fdBuffer, videoQueue[0]);
+                        #if DEBUG
+                        printf("%s\n", fdBuffer);
+                        #endif
                         //fflush(stdout);
                     }
 
@@ -355,7 +371,7 @@ void* receiverFunction() {   //Método responsável por implementar a thread rec
                 exit(EXIT_FAILURE);
             } 
             
-            else if (bytesRead == 0) {   // TODO isto pode dar merda.
+            else if (bytesRead == 0) { 
                 close(fdBackPipe);
 
                 fdBackPipe = -1;
@@ -397,18 +413,6 @@ void* senderFunction() {   //Método responsável por implementar a thread sende
         }
 
     }
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
