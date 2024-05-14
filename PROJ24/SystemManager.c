@@ -11,14 +11,37 @@ int queueBackOther = 0;
 void initializeMutexSemaphore() {   //Método responsável por inicializar um semáforo mutex
     sem_unlink("MUTEX");
     sem_unlink("SHM_SEM");
+    sem_unlink("VQ_SEM");
+    sem_unlink("OSQ_SEM");
+    sem_unlink("AES_SEM");
 
     mutexSemaphore = sem_open("MUTEX", O_CREAT | O_EXCL, 0766, 1);
+    if (mutexSemaphore == SEM_FAILED) {
+        writeLogFile("[SM] MUTEX Semaphore Creation Failed\n");
+        exit(1);
+    }
 
-    // TODO vê se há algum problema em ter isto tudo junto ; 0766 ou 0700
     shmSemaphore = sem_open("SHM_SEM", O_CREAT | O_EXCL, 0766, 1);
-
     if (shmSemaphore == SEM_FAILED) {
         writeLogFile("[SM] Shared Memory Semaphore Creation Failed\n");
+        exit(1);
+    }
+
+    videoQueueSemaphore = sem_open("VQ_SEM", O_CREAT | O_EXCL, 0766, 1);
+    if (videoQueueSemaphore == SEM_FAILED) {
+        writeLogFile("[SM] VQ_SEM Creation Failed\n");
+        exit(1);
+    }
+
+    otherQueueSemaphore = sem_open("OSQ_SEM", O_CREAT | O_EXCL, 0766, 1);
+    if (otherQueueSemaphore == SEM_FAILED) {
+        writeLogFile("[SM] OSQ_SEM Creation Failed\n");
+        exit(1);
+    }
+
+    ae_states_semaphore = sem_open("AES_SEM", O_CREAT | O_EXCL, 0766, 1);
+    if (ae_states_semaphore == SEM_FAILED) {
+        writeLogFile("[SM] AES_SEM Creation Failed\n");
         exit(1);
     }
 }
@@ -267,8 +290,22 @@ void addOtherQueue(char *fdBuffer) {   //Método responsável por adicionar à o
     
 }
 
-char *getFromQueue() {   //Método responsável por retirar da queue.
+char *getFromQueue(char* queue[100], sem_t *queue_sem) {   //Método responsável por retirar da queue.
+    sem_wait(queue_sem);
+    if (queue[0] == NULL) {
+        sem_post(queue_sem);
+        return NULL; // Queue is empty
+    }
 
+    char *first = queue[0];
+
+    // Reordering
+    for (int i = 0; queue[i] != NULL; i++) {
+        queue[i] = queue[i + 1];
+    }
+
+    sem_post(queue_sem);
+    return first;
 }
 
 void* receiverFunction() {   //Método responsável por implementar a thread receiver.
@@ -395,28 +432,56 @@ void* senderFunction() {   //Método responsável por implementar a thread sende
     writeLogFile("THREAD SENDER CREATED");
     fflush(stdout);
 
+    sem_wait(shmSemaphore);
+    int numAuthEngines = shMemory -> maxAuthServers;   //Meter semáforo.
+    sem_post(shmSemaphore);
+
     char *queueMessage;
 
     while (1) {
-        queueMessage = getFromQueue();
-
+        queueMessage = getFromQueue(videoQueue, videoQueueSemaphore); // video queue priority
+        bool aeFlag = false; // TRUE = FOUND AUTH ENGINE
+        
         if (queueMessage != NULL) {
-            bool aeFlag = true;
-
-            while (aeFlag) {
-                int numAuthEngines = shMemory -> maxAuthServers;   //Meter semáforo.
-
-                for (int i = 0; i < numAuthEngines; i++) {
-                    
+            // Check for available auth engine
+            sem_wait(ae_states_semaphore);
+            for (int i = 0; i < numAuthEngines; i++) {
+                
+                if(auth_eng_state[i]){
+                    write(fd_sender_pipes[i][1], queueMessage, sizeof(queueMessage));
                 }
+                if(aeFlag){
+                    usleep(100); // small break
+                    break;
+                }     
             }
+            sem_post(ae_states_semaphore);
         }
 
+        // other services queue
+        else {
+            queueMessage = getFromQueue(otherQueue, otherQueueSemaphore);
+            if(queueMessage != NULL){
+                // Check for available auth engine
+                sem_wait(ae_states_semaphore);
+                for (int i = 0; i < numAuthEngines; i++) {
+                    if(auth_eng_state[i]){
+                        write(fd_sender_pipes[i][1], queueMessage, sizeof(queueMessage));
+                    }
+                    
+                    if(aeFlag)
+                        break;
+                }
+                sem_post(ae_states_semaphore);
+            }
+            else{
+                usleep(100); // small break
+                continue; // next iteration 
+            }
+        }
+        usleep(100); // small break
     }
-
-
-
-    pthread_exit(NULL);
+    // pthread_exit(NULL);
 }
 
 void initThreads() {   //Método responsável por inicializar as thread receiver e sender.
