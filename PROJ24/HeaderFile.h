@@ -81,7 +81,7 @@ int fd_sender_pipes[N_AUTH_ENG][2]; // TODO ha forma de trocar o NAUTHENG pelo n
 char (*videoQueue)[100];   //Queue para video streaming services.
 char (*otherQueue)[100];   //Queue para other services.
 
-bool auth_eng_state[N_AUTH_ENG]; // TRUE = FREE; FALSE = OCCUPIED;
+bool auth_eng_state[N_AUTH_ENG];   //TRUE = FREE; FALSE = OCCUPIED;
 
 void initializeLogFile();
 void writeLogFile(char *strMessage);
@@ -94,8 +94,10 @@ void* receiverFunction();
 void* senderFunction();
 void initThreads();
 void authorizationRequestManagerFunction();
-void addVideoQueue(char *fdBuffer);
-void addOtherQueue(char *fdBuffer);
+void authorizationEngine(int engine_id);
+int addVideoQueue(char *fdBuffer);
+int addOtherQueue(char *fdBuffer);
+char *getFromQueue(char* queue[100], sem_t *queue_sem);
 void cleanResources();
 
 void monitor_engine_func();
