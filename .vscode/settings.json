@@ -1,6 +1,7 @@
 {
     "files.associations": {
         "shm.h": "c",
-        "semaphore.h": "c"
+        "semaphore.h": "c",
+        "string.h": "c"
     }
 }

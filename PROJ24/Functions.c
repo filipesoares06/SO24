@@ -94,38 +94,68 @@ int random_number(int min, int max)
     return min + rand() / (RAND_MAX / (max - min + 1) + 1);
 }
 
-void cleanResources()
-{ // Método responsável por terminar o programa e limpar todos os recursos.
-    // writeLogFile("SYSTEM SHUTTING DOWN");
+void closeLogFile() {
+    if (logFile != NULL) {
+        fprintf(logFile, "Log file closed.\n");
+        fclose(logFile);
+        logFile = NULL;
+    }
+}
 
-    wait(NULL);
+void cleanResources() { 
+    // Aguarda todos os processos filhos para evitar processos zumbis
+    while (wait(NULL) > 0);
 
+    // Fechar e remover semáforos
     sem_close(mutexSemaphore);
-    sem_unlink("");
+    sem_unlink("mutexSemaphore");
 
     sem_close(shmSemaphore);
-    sem_unlink("");
+    sem_unlink("shmSemaphore");
 
+    sem_close(videoQueueSemaphore);
+    sem_unlink("videoQueueSemaphore");
+
+    sem_close(otherQueueSemaphore);
+    sem_unlink("otherQueueSemaphore");
+
+    sem_close(ae_states_semaphore);
+    sem_unlink("ae_states_semaphore");
+
+    // Desanexar e remover a memória compartilhada
     shmdt(shMemory);
     shmctl(shmId, IPC_RMID, NULL);
 
-    for (int i = 0; i < N_AUTH_ENG; i++)
-    { // TODO close pipes before unlinks
+    // Fechar e remover pipes
+    for (int i = 0; i < N_AUTH_ENG; i++) {
         close(fd_sender_pipes[i][0]);
-
         close(fd_sender_pipes[i][1]);
     }
 
-    // close();
+    // Remover named pipes
     unlink(BACK_PIPE);
-
-    // close();
     unlink(USER_PIPE);
 
-    msgctl(msgget(ftok("msgfile", 'A'), 0666 | IPC_CREAT), IPC_RMID, NULL);
+    // Remover fila de mensagens
+    msgctl(msgq_id, IPC_RMID, NULL);
 
-    // TODO fechar log
+    // Limpar as filas de video e outros serviços
+    if (videoQueue != NULL) {
+        free(videoQueue);
+        videoQueue = NULL;
+    }
+
+    if (otherQueue != NULL) {
+        free(otherQueue);
+        otherQueue = NULL;
+    }
+
+    // Fechar o arquivo de log
+    closeLogFile();
+
+    printf("SYSTEM SHUTDOWN COMPLETE\n");
 }
+
 
 void sigint(int signum)
 { // Método responsável por receber o sinal sigint.

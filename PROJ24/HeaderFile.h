@@ -19,12 +19,14 @@
 #include <sys/stat.h>
 #include <sys/msg.h>
 #include <sys/wait.h>
-#include <mqueue.h>
+//#include <mqueue.h>
 #include <sys/select.h>
 #include <limits.h>
 
 #define USER_PIPE "/tmp/userpipe"
 #define BACK_PIPE "/tmp/backpipe"
+
+FILE *logFile;
 
 sem_t *mutexSemaphore;
 sem_t *shmSemaphore;
@@ -65,6 +67,8 @@ typedef struct sharedMemory {
     int totalVideoAuthReq;
     int totalMusicAuthReq;
     int totalSocialAuthReq;
+
+    bool auth_eng_state[N_AUTH_ENG];   //TRUE = FREE; FALSE = OCCUPIED;
 } sharedMemory;
 
 int shmId;
@@ -80,8 +84,6 @@ int fd_sender_pipes[N_AUTH_ENG][2]; // TODO ha forma de trocar o NAUTHENG pelo n
 
 char (*videoQueue)[100];   //Queue para video streaming services.
 char (*otherQueue)[100];   //Queue para other services.
-
-bool auth_eng_state[N_AUTH_ENG];   //TRUE = FREE; FALSE = OCCUPIED;
 
 void initializeLogFile();
 void writeLogFile(char *strMessage);

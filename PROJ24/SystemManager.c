@@ -1,7 +1,5 @@
 #include "HeaderFile.h"
 
-FILE *logFile;
-
 int queueFrontVideo = 0;
 int queueBackVideo = 0;
             
@@ -51,6 +49,12 @@ void initializeLogFile() {   //Método responsável por inicializar o ficheiro d
         perror("[CONSOLE] Failed to open log file.");
 
         exit(1);
+    }
+}
+
+void initializeAuthEngState(int n_eng){
+    for (int i = 0; i < n_eng; i++) {
+        shMemory->auth_eng_state[i] = true;
     }
 }
 
@@ -129,6 +133,7 @@ int readConfigFile(char *fileName) {   //Método responsável por ler o ficheiro
                 }
 
                 shMemory -> maxAuthServers = number;
+                initializeAuthEngState(number);
                 lineId++;
 
                 break;
@@ -235,6 +240,21 @@ void initializeSharedMemory(int n_users) {   //Método responsável por iniciali
     shMemory -> totalVideoAuthReq = 0;
     shMemory -> totalMusicAuthReq = 0;
     shMemory -> totalSocialAuthReq = 0;
+
+
+    shMemory->mobileUsers = (mobileUser *)((char *)shMemory + sizeof(sharedMemory));
+
+    for (int i = 0; i < n_users; i++) {
+        shMemory->mobileUsers[i].user_id = 0;
+        shMemory->mobileUsers[i].inicialPlafond = 0;
+        shMemory->mobileUsers[i].numAuthRequests = 0;
+        shMemory->mobileUsers[i].videoInterval = 0;
+        shMemory->mobileUsers[i].musicInterval = 0;
+        shMemory->mobileUsers[i].socialInterval = 0;
+        shMemory->mobileUsers[i].reservedData = 0;
+        shMemory->mobileUsers[i].usedData = 0;
+        shMemory->mobileUsers[i].alertAux = 0;
+    }
 
     writeLogFile("SHARED MEMORY INITIALIZED");
 }
