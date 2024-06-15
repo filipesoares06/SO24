@@ -254,16 +254,26 @@ void initializeSharedMemory(int n_users) {   //Método responsável por iniciali
     writeLogFile("SHARED MEMORY INITIALIZED");
 }
 
-void createProcess(void (*functionProcess) (void*), void *args) {   //Método responsável por criar um novo processo.
-    if (fork() == 0) {   //Cria um novo processo. Se a função fork() retornar 0, todo o código neste bloco será executado no processo filho.
-        if (args)   //Verifica se a função possui argumentos.
-            functionProcess(args);
+void createProcess(void (*functionProcess) (void*), void *args) {   //Método responsável por criar um novo processo. 
+    pid_t pid = fork();   //Cria um novo processo.
 
-        else
-            functionProcess(NULL);
+    if (pid == -1) {   //Erro ao criar o processo.
+        perror("Error while forking");
+
+        exit(1);
     }
+    
+    else if (pid == 0) {   //Código executado no processo filho.
+        if (args) {   
+            functionProcess(args);
+            free(args);
+            exit(0);
+        }
 
-    wait(NULL);
+        else {
+            functionProcess(NULL);
+        }
+    }
 }
 
 void initializeMessageQueue() {   //Método responsável por inicializar a message queue.
@@ -479,61 +489,7 @@ void* receiverFunction() {   //Método responsável por implementar a thread rec
 void* senderFunction() {   //Método responsável por implementar a thread sender.
     writeLogFile("THREAD SENDER CREATED");
     fflush(stdout);
-    /*
-    sem_wait(shmSemaphore);
-    int numAuthEngines = shMemory -> maxAuthServers;   //Meter semáforo.
-    sem_post(shmSemaphore);
-
-    char *queueMessage;
-
-    while (1) {
-        queueMessage = getFromQueue(videoQueue, videoQueueSemaphore); // video queue priority
-        bool aeFlag = false; // TRUE = FOUND AUTH ENGINE
-
-        if (queueMessage != NULL) {
-            // Check for available auth engine
-            sem_wait(ae_states_semaphore);
-            for (int i = 0; i < numAuthEngines; i++) {
-                
-                if(auth_eng_state[i]){
-                    write(fd_sender_pipes[i][1], queueMessage, sizeof(queueMessage));
-
-                    auth_eng_state[i] = false;
-                }
-                if(aeFlag){
-                    usleep(100); // small break
-                    break;
-                }     
-            }
-            sem_post(ae_states_semaphore);
-        }
-
-        // other services queue
-        else {
-            queueMessage = getFromQueue(otherQueue, otherQueueSemaphore);
-            if(queueMessage != NULL){
-                // Check for available auth engine
-                sem_wait(ae_states_semaphore);
-                for (int i = 0; i < numAuthEngines; i++) {
-                    if(auth_eng_state[i]){
-                        write(fd_sender_pipes[i][1], queueMessage, sizeof(queueMessage));
-
-                        auth_eng_state[i] = false;
-                    }
-                    
-                    if(aeFlag)
-                        break;
-                }
-                sem_post(ae_states_semaphore);
-            }
-            else{
-                usleep(100); // small break
-                continue; // next iteration 
-            }
-        }
-        usleep(100); // small break
-    }
-    */
+    
     pthread_exit(NULL);
 }
 
@@ -596,8 +552,12 @@ void authorizationRequestManagerFunction() {   //Método responsável por implem
     for (int i = 0; i < authEngines; i++) {
         int* authEngineId = malloc(sizeof(int));
         *authEngineId = i;
-
+        printf("Imprime aqui\n");
         createProcess(authorizationEngineWrapper, authEngineId);
+    }
+    
+    for (int i = 0; i < authEngines; i++) {   //Espera que todos os processos filhos terminem.
+        wait(NULL);
     }
 
     pthread_join(receiverThread, NULL);
@@ -615,79 +575,12 @@ void authorizationEngine(int engineId) {   //Método responsável por implementa
     snprintf(initializeMessage, sizeof(initializeMessage), "AUTHORIZATION_ENGINE %d READY", engineId);
 
     writeLogFile(initializeMessage);
+    fflush(stdout);
 }
 
 void monitorEngineFunction() {
-    key_t key = ftok("msgfile", 'A');
-    int msgq_id = msgget(key, 0666 | IPC_CREAT);
-
-    if (msgq_id == -1) {
-        perror("Error while opening Message Queue");
-        
-        exit(1);
-    }
-
-    int n_users;
-    sem_wait(shmSemaphore);
-    n_users = shMemory->n_users;
-    sem_post(shmSemaphore);
-
-    message msg;
-
-    while (1) {
-        for (int i = 0; i < n_users; i++) {
-            char alert[40];
-
-            sem_wait(shmSemaphore);
-            mobileUser *user = &(shMemory->mobileUsers[i]);
-            sem_post(shmSemaphore);
-
-            //int currentUsage = user->usedData;
-            //int initialPlafond = user->inicialPlafond;
-
-            if (user->alertAux != 0) {
-                // msg.user_id = user->user_id;
-                msg.mtype = 10 + user->user_id;
-
-#if DEBUG
-                printf("[DEBUG] 10 + %d -> %d\n", user->user_id, msg.mtype);
-#endif
-
-                switch (user->alertAux) {
-                case 1:
-                    snprintf(alert, sizeof(alert), "USER %d REACHED 80%% of DATA USAGE\n", user->user_id);
-                    // writeLogFile(alert);
-                    snprintf(msg.msg, 10, "A#80");
-                    break;
-                case 2:
-                    snprintf(alert, sizeof(alert), "USER %d REACHED 90%% of DATA USAGE\n", user->user_id);
-                    // writeLogFile(alert);
-                    snprintf(msg.msg, 10, "A#90");
-                    break;
-                case 3:
-                    snprintf(alert, sizeof(alert), "USER %d REACHED 100%% of DATA USAGE\n", user->user_id);
-                    // writeLogFile(alert);
-                    snprintf(msg.msg, 10, "A#100");
-                    break;
-                }
-
-                if (msgsnd(msgq_id, &msg, 1024, 0) == -1) {
-                    perror("Error while sending message");
-                    
-                    exit(1);
-                }
-
-#if DEBUG
-                char *text = NULL;
-                snprintf(text, 1024, "sent msgq alert for user %d \n", user->user_id);
-                // writeLogFile(text);
-                free(text);
-#endif
-            }
-        }
-    }
-
-    // TODO fazer a cada 30s enviar stats
+    writeLogFile("PROCESS MONITOR_ENGINE CREATED");
+    fflush(stdout);
 }
 
 void authorizationRequestManager() {   //Método responsável por criar o processo Authorization Request Manager.
