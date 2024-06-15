@@ -1,3 +1,6 @@
+//Filipe Freire Soares 2020238986
+//Francisco Cruz Macedo 2020223771
+
 #include "HeaderFile.h"
 
 int queueFrontVideo = 0;
@@ -52,13 +55,7 @@ void initializeLogFile() {   //Método responsável por inicializar o ficheiro d
     }
 }
 
-void initializeAuthEngState(int n_eng){
-    for (int i = 0; i < n_eng; i++) {
-        shMemory->auth_eng_state[i] = true;
-    }
-}
-
-void writeLogFile(char *strMessage) {   //Método responsável por escrever no ficheiro de log e imprimir na consola sincronizadamente..
+void writeLogFile(char *strMessage) {   //Método responsável por escrever no ficheiro de log e imprimir na consola sincronizadamente.
     char timeS[10];
     time_t time1 = time(NULL);
 
@@ -133,7 +130,6 @@ int readConfigFile(char *fileName) {   //Método responsável por ler o ficheiro
                 }
 
                 shMemory -> maxAuthServers = number;
-                initializeAuthEngState(number);
                 lineId++;
 
                 break;
@@ -209,16 +205,16 @@ int createSharedMemory(int shmSize) {   //Método responsável por criar a memó
     return shmIdValue;
 }
 
-sharedMemory* attatchSharedMemory(int shmId) {   //Método responsável por atrivuir uma zona (endereço) de memória partilhada.
+sharedMemory* attatchSharedMemory(int shmId) {   //Método responsável por atribuir uma zona (endereço) de memória partilhada.
     char *shmAddr = shmat(shmId, NULL, 0);
 
-    if (shmAddr == (sharedMemory *) - 1) {
+    if (shmAddr == (char *) - 1) {
         writeLogFile("Shmat error");
 
         exit(1);
     }
 
-    return shmAddr;
+    return (sharedMemory *) shmAddr;
 }
 
 void initializeSharedMemory(int n_users) {   //Método responsável por inicializar a memória partilhada.
@@ -241,7 +237,6 @@ void initializeSharedMemory(int n_users) {   //Método responsável por iniciali
     shMemory -> totalMusicAuthReq = 0;
     shMemory -> totalSocialAuthReq = 0;
 
-
     shMemory->mobileUsers = (mobileUser *)((char *)shMemory + sizeof(sharedMemory));
 
     for (int i = 0; i < n_users; i++) {
@@ -259,10 +254,24 @@ void initializeSharedMemory(int n_users) {   //Método responsável por iniciali
     writeLogFile("SHARED MEMORY INITIALIZED");
 }
 
+void createProcess(void (*functionProcess) (void*), void *args) {   //Método responsável por criar um novo processo.
+    if (fork() == 0) {   //Cria um novo processo. Se a função fork() retornar 0, todo o código neste bloco será executado no processo filho.
+        if (args)   //Verifica se a função possui argumentos.
+            functionProcess(args);
+
+        else
+            functionProcess(NULL);
+    }
+
+    wait(NULL);
+}
+
 void initializeMessageQueue() {   //Método responsável por inicializar a message queue.
+    /*
     key_t key = ftok("msgfile", 'A');
 
     int msgq_id = msgget(key, 0666 | IPC_CREAT);
+    */
 }
 
 int addVideoQueue(char *fdBuffer) {   //Método responsável por adicionar à video streaming queue.
@@ -283,10 +292,10 @@ int addVideoQueue(char *fdBuffer) {   //Método responsável por adicionar à vi
         strncpy(videoQueue[queueBackVideo], fdBuffer, sizeof(videoQueue[queueBackVideo]));
         sem_post(videoQueueSemaphore);
 
-        printf("%s - %s\n", videoQueue[queueBackVideo], videoQueue[0]);   //Retirar. Apenas verifica se foi adicionar corretamente à queue.
-        fflush(stdout);
+        //printf("%s - %s\n", videoQueue[queueBackVideo], videoQueue[0]);   //Retirar. Apenas verifica se foi adicionar corretamente à queue.
+        //fflush(stdout);
 
-        queueBackVideo = (queueBackVideo + 1) % (auxQp);
+        queueBackOther = (queueBackOther + 1) % (auxQp + 1);
     }
 
     return 0;
@@ -310,10 +319,10 @@ int addOtherQueue(char *fdBuffer) {   //Método responsável por adicionar à ot
         strncpy(otherQueue[queueBackOther], fdBuffer, sizeof(otherQueue[queueBackOther]));
         sem_post(otherQueueSemaphore);
 
-        printf("%s - %s\n", otherQueue[queueBackOther], otherQueue[0]);   //Retirar. Apenas verifica se foi adicionar corretamente à queue.
-        fflush(stdout);
+        //printf("%s - %s\n", otherQueue[queueBackOther], otherQueue[0]);   //Retirar. Apenas verifica se foi adicionar corretamente à queue.
+        //fflush(stdout);
 
-        queueBackOther = (queueBackOther + 1) % auxQp;
+        queueBackOther = (queueBackOther + 1) % (auxQp + 1);
     }
 
     return 0;
@@ -341,7 +350,7 @@ char *getFromQueue(char* queue[100], sem_t *queue_sem) {   //Método responsáve
 
 void* receiverFunction() {   //Método responsável por implementar a thread receiver.
     writeLogFile("THREAD RECEIVER CREATED");
-    //fflush(stdout);
+    fflush(stdout);
     
     int fdUserPipe = open(USER_PIPE, O_RDONLY | O_NONBLOCK);   //É aberto o named pipe USER_PIPE para leitura. Named pipe é criado no Authorization Request Manager.
 
@@ -358,19 +367,19 @@ void* receiverFunction() {   //Método responsável por implementar a thread rec
                         
         exit(1);
     }
-    
-    fd_set read_fds;
-    FD_ZERO(&read_fds);
-    FD_SET(fdUserPipe, &read_fds);
-    FD_SET(fdBackPipe, &read_fds);
 
     int fdMax = (fdUserPipe > fdBackPipe) ? fdUserPipe : fdBackPipe;
 
     while (1) {
+        fd_set read_fds;
+        FD_ZERO(&read_fds);
+        FD_SET(fdUserPipe, &read_fds);
+        FD_SET(fdBackPipe, &read_fds);
+
         int activity = select(fdMax + 1, &read_fds, NULL, NULL, NULL);   // Use select() to wait for activity on pipes
 
         int verifyVideoAdd = 0;
-        int verifyOtherAdd = 0;
+        //int verifyOtherAdd = 0;
 
         if (activity == -1) {
             perror("Error selecting pipe");
@@ -404,9 +413,9 @@ void* receiverFunction() {   //Método responsável por implementar a thread rec
                     printf("%s\n", fdBuffer);
                 }
                 
-                else if(sscanf(fdBuffer, "%d#%s#%d", &n1, &serviceToken, &n2) == 2) {
+                else if(sscanf(fdBuffer, "%d#%s#%d", &n1, serviceToken, &n2) == 2) {
                     char *serviceType = strtok(serviceToken, "#");
-                    int dataService = atoi(strtok(NULL, "#"));
+                    //int dataService = atoi(strtok(NULL, "#"));
                     
                     if (strcmp(serviceType, "VIDEO") == 0){   //Envia para a video streaming queue.
                         verifyVideoAdd = addVideoQueue(fdBuffer);
@@ -420,7 +429,7 @@ void* receiverFunction() {   //Método responsável por implementar a thread rec
                     }
 
                     else {   //Envia para a other services queue.
-                        verifyOtherAdd = addOtherQueue(fdBuffer);
+                        //verifyOtherAdd = addOtherQueue(fdBuffer);
 
                         if (verifyVideoAdd == 1) {
                             usleep(10000);
@@ -470,9 +479,7 @@ void* receiverFunction() {   //Método responsável por implementar a thread rec
 void* senderFunction() {   //Método responsável por implementar a thread sender.
     writeLogFile("THREAD SENDER CREATED");
     fflush(stdout);
-
-    printf("ola");
-
+    /*
     sem_wait(shmSemaphore);
     int numAuthEngines = shMemory -> maxAuthServers;   //Meter semáforo.
     sem_post(shmSemaphore);
@@ -484,13 +491,14 @@ void* senderFunction() {   //Método responsável por implementar a thread sende
         bool aeFlag = false; // TRUE = FOUND AUTH ENGINE
 
         if (queueMessage != NULL) {
-            //printf("SENDER:%s\n", queueMessage);
             // Check for available auth engine
             sem_wait(ae_states_semaphore);
             for (int i = 0; i < numAuthEngines; i++) {
                 
                 if(auth_eng_state[i]){
                     write(fd_sender_pipes[i][1], queueMessage, sizeof(queueMessage));
+
+                    auth_eng_state[i] = false;
                 }
                 if(aeFlag){
                     usleep(100); // small break
@@ -502,8 +510,6 @@ void* senderFunction() {   //Método responsável por implementar a thread sende
 
         // other services queue
         else {
-            //printf("SENDER:%s\n", queueMessage);
-
             queueMessage = getFromQueue(otherQueue, otherQueueSemaphore);
             if(queueMessage != NULL){
                 // Check for available auth engine
@@ -511,6 +517,8 @@ void* senderFunction() {   //Método responsável por implementar a thread sende
                 for (int i = 0; i < numAuthEngines; i++) {
                     if(auth_eng_state[i]){
                         write(fd_sender_pipes[i][1], queueMessage, sizeof(queueMessage));
+
+                        auth_eng_state[i] = false;
                     }
                     
                     if(aeFlag)
@@ -525,7 +533,8 @@ void* senderFunction() {   //Método responsável por implementar a thread sende
         }
         usleep(100); // small break
     }
-    // pthread_exit(NULL);
+    */
+    pthread_exit(NULL);
 }
 
 void initThreads() {   //Método responsável por inicializar as thread receiver e sender.
@@ -576,191 +585,109 @@ void authorizationRequestManagerFunction() {   //Método responsável por implem
 
     sem_wait(shmSemaphore);
     int queueSize = shMemory -> queuePos;
+    int authEngines = shMemory -> maxAuthServers;
     sem_post(shmSemaphore);
 
     videoQueue = malloc(sizeof(char[queueSize][100]));   //Inicializa a video streaming queue.
     otherQueue = malloc(sizeof(char[queueSize][100]));   //Incializa a other services queue.
 
-    pthread_t receiver_id, sender_id;
-
     initThreads();
-    pthread_join(receiver_id, NULL);
-    pthread_join(sender_id, NULL);
+
+    for (int i = 0; i < authEngines; i++) {
+        int* authEngineId = malloc(sizeof(int));
+        *authEngineId = i;
+
+        createProcess(authorizationEngineWrapper, authEngineId);
+    }
+
+    pthread_join(receiverThread, NULL);
+    pthread_join(senderThread, NULL);
 }
 
-void authorization_engine(int engine_id) {   //Método responsável por implementar o Authorization Engine.
-    while (1) {   //Lê mensagens do sender pelo unnamed pipe.
-        char aux[1024];
-        int bytes_read = read(fd_sender_pipes[engine_id][0], &aux, sizeof(aux));
+void authorizationEngineWrapper(void *arg) {   //Permite converter o pointeiro void para int.
+    int authEngineId = *(int *) arg;
 
-        if (bytes_read > 0) {   
-            sem_wait(ae_states_semaphore);
-            auth_eng_state[engine_id] = false;
-            sem_post(ae_states_semaphore);
+    authorizationEngine(authEngineId);
+}
 
-            int user_id;
-            int s;
-            int req_value;
-            int n2;
-            int n3;
-            
-            if (sscanf(aux, "%d#%d", &user_id, &req_value) == 2) {   //Efetua o registo do mobile user.
-                mobileUser aux_user;
-                aux_user.user_id = user_id;
-                aux_user.inicialPlafond = n2;
+void authorizationEngine(int engineId) {   //Método responsável por implementar o Authorization Engine.
+    char initializeMessage[32];
+    snprintf(initializeMessage, sizeof(initializeMessage), "AUTHORIZATION_ENGINE %d READY", engineId);
 
-                // aux_user.numAuthRequests = 0; aux_user.videoInterval = 0; aux_user.musicInterval = 0;
+    writeLogFile(initializeMessage);
+}
 
-                int n_users;
+void monitorEngineFunction() {
+    key_t key = ftok("msgfile", 'A');
+    int msgq_id = msgget(key, 0666 | IPC_CREAT);
 
-                sem_wait(shmSemaphore);
-                n_users = shMemory->n_users;
-                sem_post(shmSemaphore);
+    if (msgq_id == -1) {
+        perror("Error while opening Message Queue");
+        
+        exit(1);
+    }
 
-                for (int i = 0; i < n_users; i++) {
-                    sem_wait(shmSemaphore);
+    int n_users;
+    sem_wait(shmSemaphore);
+    n_users = shMemory->n_users;
+    sem_post(shmSemaphore);
 
-                    if (&(shMemory->mobileUsers[i]) == NULL) {
-                        shMemory->mobileUsers[i] = aux_user;
-                        sem_post(shmSemaphore);
+    message msg;
+
+    while (1) {
+        for (int i = 0; i < n_users; i++) {
+            char alert[40];
+
+            sem_wait(shmSemaphore);
+            mobileUser *user = &(shMemory->mobileUsers[i]);
+            sem_post(shmSemaphore);
+
+            //int currentUsage = user->usedData;
+            //int initialPlafond = user->inicialPlafond;
+
+            if (user->alertAux != 0) {
+                // msg.user_id = user->user_id;
+                msg.mtype = 10 + user->user_id;
+
 #if DEBUG
-                        printf("inserted in shm %s\n", fdBuffer);
-#endif
-                        break;
-                    }
-
-                    sem_post(shmSemaphore);
-                }
-#if DEBUG
-                printf("%s\n", fdBuffer);
-#endif
-            }
-
-            else if (sscanf(aux, "%d#%s#%d", &user_id, &s, &req_value) == 3) {   //Atualiza pedidos e alertas.
-                int n_users;
-                bool found = false;
-
-                sem_wait(shmSemaphore);
-                n_users = shMemory->n_users;
-                sem_post(shmSemaphore);
-
-                for (int i = 0; i < n_users; i++) {
-                    sem_wait(shmSemaphore);
-
-                    if (shMemory->mobileUsers[i].user_id == user_id && shMemory->mobileUsers[i].usedData + req_value <= shMemory->mobileUsers[i].inicialPlafond) {
-                        shMemory->mobileUsers[i].usedData += req_value;
-
-                        if ((shMemory->mobileUsers[i].usedData / shMemory->mobileUsers[i].inicialPlafond) >= 0.8 && (shMemory->mobileUsers[i].usedData / shMemory->mobileUsers[i].inicialPlafond) < 0.9) {
-                            shMemory->mobileUsers[i].alertAux = 1;
-
-                            char alert[40];
-                            snprintf(alert, sizeof(alert), "USER %d REACHED 80%% of DATA USAGE\n", user_id);
-
-                            writeLogFile(alert);
-                        }
-
-                        else if ((shMemory->mobileUsers[i].usedData / shMemory->mobileUsers[i].inicialPlafond) >= 0.9 && (shMemory->mobileUsers[i].usedData / shMemory->mobileUsers[i].inicialPlafond) < 1.0) {
-                            shMemory->mobileUsers[i].alertAux = 2;
-
-                            char alert[40];
-                            snprintf(alert, sizeof(alert), "USER %d REACHED 90%% of DATA USAGE\n", user_id);
-
-                            writeLogFile(alert);
-                        }
-
-                        else if (shMemory->mobileUsers[i].usedData == shMemory->mobileUsers[i].inicialPlafond) {
-                            shMemory->mobileUsers[i].alertAux = 3;
-
-                            char alert[40];
-                            snprintf(alert, sizeof(alert), "USER %d REACHED 100%% of DATA USAGE\n", user_id);
-
-                            writeLogFile(alert);
-                        }
-                    }
-
-                    sem_post(shmSemaphore);
-
-                    if (found)
-                        break;
-                }
-            }
-
-            else if (sscanf(aux, "%d#[^\n]", &user_id, &s) == 2) {   //Efetua operações do BackOfficeUser.
-                if (strcmp(s, "data_stats")) {   //Comando data_stats.
-                    message msg;
-                    msg.mtype = 200;
-
-                    sem_wait(shmSemaphore);
-                    snprintf(msg.msg, 1024, "STATS (data|aut reqs)\nVIDEO: %d|%d\nMUSIC: %d|%d\nSOCIAL: %d|%d\n",
-                            shMemory->totalVideoData, shMemory->totalVideoAuthReq,
-                            shMemory->totalMusicData, shMemory->totalMusicAuthReq,
-                            shMemory->totalSocialData, shMemory->totalSocialAuthReq);
-                    sem_post(shmSemaphore);
-
-                    key_t key = ftok("msgfile", 'A');
-                    int msgq_id = msgget(key, 0666 | IPC_CREAT);
-
-                    if (msgq_id == -1) {
-                        perror("[AE] Error while opening Message Queue");
-
-                        exit(1);
-                    }
-
-                    if (msgsnd(msgq_id, &msg, 1024, 0) == -1) {
-                        perror("[AE] Error while sending message");
-
-                        exit(1);
-                    }
-#if DEBUG
-                    printf("[AE] Stats sent :)\n");
+                printf("[DEBUG] 10 + %d -> %d\n", user->user_id, msg.mtype);
 #endif
 
-                    //writeLogFile("[AE] Stats Executed");
+                switch (user->alertAux) {
+                case 1:
+                    snprintf(alert, sizeof(alert), "USER %d REACHED 80%% of DATA USAGE\n", user->user_id);
+                    // writeLogFile(alert);
+                    snprintf(msg.msg, 10, "A#80");
+                    break;
+                case 2:
+                    snprintf(alert, sizeof(alert), "USER %d REACHED 90%% of DATA USAGE\n", user->user_id);
+                    // writeLogFile(alert);
+                    snprintf(msg.msg, 10, "A#90");
+                    break;
+                case 3:
+                    snprintf(alert, sizeof(alert), "USER %d REACHED 100%% of DATA USAGE\n", user->user_id);
+                    // writeLogFile(alert);
+                    snprintf(msg.msg, 10, "A#100");
+                    break;
                 }
 
-                else if (strcmp(s, "reset"))
-                {
-                    sem_wait(shmSemaphore);
-                    shMemory->totalVideoData = 0;
-                    shMemory->totalVideoAuthReq = 0;
-                    shMemory->totalMusicData = 0;
-                    shMemory->totalMusicAuthReq = 0;
-                    shMemory->totalSocialData = 0;
-                    shMemory->totalSocialAuthReq = 0;
-                    sem_post(shmSemaphore);
+                if (msgsnd(msgq_id, &msg, 1024, 0) == -1) {
+                    perror("Error while sending message");
+                    
+                    exit(1);
+                }
 
-                    // writeLogFile("[AE] Reset executed");
 #if DEBUG
-                    printf("[AE] Reset done :)\n");
+                char *text = NULL;
+                snprintf(text, 1024, "sent msgq alert for user %d \n", user->user_id);
+                // writeLogFile(text);
+                free(text);
 #endif
-                }
             }
-
-            // ERROR
-            else
-            {
-                perror("[AE] Error - Failed to parse the string\n");
-
-                exit(1);
-            }
-
-            sem_wait(ae_states_semaphore);
-            auth_eng_state[engine_id] = true;
-            sem_post(ae_states_semaphore);
         }
     }
-}
 
-void createProcess(void (*functionProcess) (void*), void *args) {   //Método responsável por criar um novo processo.
-    if (fork() == 0) {   //Cria um novo processo. Se a função fork() retornar 0, todo o código neste bloco será executado no processo filho.
-        if (args)   //Verifica se a função possui argumentos.
-            functionProcess(args);
-
-        else
-            functionProcess(NULL);
-    }
-
-    wait(NULL);
+    // TODO fazer a cada 30s enviar stats
 }
 
 void authorizationRequestManager() {   //Método responsável por criar o processo Authorization Request Manager.
@@ -768,7 +695,7 @@ void authorizationRequestManager() {   //Método responsável por criar o proces
 }
 
 void monitorEngine() {   //Método responsável por criar o processo Monitor Engine.
-    createProcess(monitor_engine_func, NULL);
+    createProcess(monitorEngineFunction, NULL);
 }
 
 int main(int argc, char *argv[]) {
@@ -790,12 +717,20 @@ int main(int argc, char *argv[]) {
 
     writeLogFile("PROCESS SYSTEM MANAGER CREATED");
 
+    sem_wait(shmSemaphore);
+    int authEngines = shMemory -> maxAuthServers;
+    sem_post(shmSemaphore);
+
+    for (int i = 0; i < authEngines; i++) {
+        auth_eng_state[i] = true;
+    }
+
     //sem_init(&videoQueueSemaphore, 0, 1);   //Inicializa o semáforo para a video streaming queue.
     //sem_init(&otherQueueSemaphore, 0, 1);   //Inicializa o semáforo para a other services queue.
 
     authorizationRequestManager();
 
-    /* TODO é preciso fazer isto aqui?
+    /*
         pthread_join(receiver_thread, NULL);
         pthread_join(sender_thread, NULL);
 

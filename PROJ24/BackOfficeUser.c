@@ -1,3 +1,6 @@
+//Filipe Freire Soares 2020238986
+//Francisco Cruz Macedo 2020223771
+
 #include "HeaderFile.h"
 
 int main(int argc, char *argv[]) {
@@ -51,10 +54,10 @@ int main(int argc, char *argv[]) {
                 snprintf(msg, sizeof(msg), "%d#data_stats", backOfficeUserId);
 
                 write(fd, msg, strlen(msg) + 1); 
-                
+                /*
                 message aux; bool flag = true;
 
-                /*
+                
                 while(flag) {   //TODO ler estatisticas da message queue
                     if(msgrcv(msgq_id, &aux, sizeof(struct message), 200, 0) == -1) {
                         perror("Error while receiving stats from message queue");
