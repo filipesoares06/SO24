@@ -64,7 +64,7 @@ void cleanResources() {
     }
 
     // Fechar o arquivo de log
-    fclose(logFile);
+    //fclose(logFile);
 
     printf("SYSTEM SHUTDOWN COMPLETE\n");
 }

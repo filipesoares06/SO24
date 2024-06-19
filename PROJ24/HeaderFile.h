@@ -81,10 +81,10 @@ pthread_t senderThread;
 int msgq_id;
 key_t key;
 
-int fd_sender_pipes[N_AUTH_ENG][2];
+char **videoQueue;   //Queue para video streaming services.
+char **otherQueue;   //Queue para other services.
 
-char (*videoQueue)[100];   //Queue para video streaming services.
-char (*otherQueue)[100];   //Queue para other services.
+int fd_sender_pipes[N_AUTH_ENG][2];
 
 bool auth_eng_state[N_AUTH_ENG];   //TRUE = FREE; FALSE = OCCUPIED;
 
@@ -98,12 +98,11 @@ void initializeSharedMemory();
 void* receiverFunction();
 void* senderFunction();
 void initThreads();
+void addToQueue(char *authOrder);
 void authorizationRequestManagerFunction();
-void authorizationEngineWrapper(void *arg);
 void authorizationEngine(int engineId);
 void monitorEngineFunction();
-int addVideoQueue(char *fdBuffer);
-int addOtherQueue(char *fdBuffer);
+
 char *getFromQueue(char* queue[100], sem_t *queue_sem);
 void cleanResources();
 void sigint(int signum);

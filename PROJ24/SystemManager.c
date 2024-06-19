@@ -19,30 +19,35 @@ void initializeMutexSemaphore() {   //Método responsável por inicializar um se
     mutexSemaphore = sem_open("MUTEX", O_CREAT | O_EXCL, 0766, 1);
     if (mutexSemaphore == SEM_FAILED) {
         writeLogFile("[SM] MUTEX Semaphore Creation Failed\n");
+
         exit(1);
     }
 
     shmSemaphore = sem_open("SHM_SEM", O_CREAT | O_EXCL, 0766, 1);
     if (shmSemaphore == SEM_FAILED) {
         writeLogFile("[SM] Shared Memory Semaphore Creation Failed\n");
+
         exit(1);
     }
 
     videoQueueSemaphore = sem_open("VQ_SEM", O_CREAT | O_EXCL, 0766, 1);
     if (videoQueueSemaphore == SEM_FAILED) {
         writeLogFile("[SM] VQ_SEM Creation Failed\n");
+
         exit(1);
     }
 
     otherQueueSemaphore = sem_open("OSQ_SEM", O_CREAT | O_EXCL, 0766, 1);
     if (otherQueueSemaphore == SEM_FAILED) {
         writeLogFile("[SM] OSQ_SEM Creation Failed\n");
+
         exit(1);
     }
 
     ae_states_semaphore = sem_open("AES_SEM", O_CREAT | O_EXCL, 0766, 1);
     if (ae_states_semaphore == SEM_FAILED) {
         writeLogFile("[SM] AES_SEM Creation Failed\n");
+
         exit(1);
     }
 }
@@ -102,6 +107,7 @@ int readConfigFile(char *fileName) {   //Método responsável por ler o ficheiro
                 }
 
                 initializeSharedMemory(number);
+
                 lineId++;
                 
                 break;
@@ -116,6 +122,7 @@ int readConfigFile(char *fileName) {   //Método responsável por ler o ficheiro
                 }
 
                 shMemory -> queuePos = number;
+
                 lineId++;
                 
                 break;
@@ -130,6 +137,7 @@ int readConfigFile(char *fileName) {   //Método responsável por ler o ficheiro
                 }
 
                 shMemory -> maxAuthServers = number;
+
                 lineId++;
 
                 break;
@@ -144,6 +152,7 @@ int readConfigFile(char *fileName) {   //Método responsável por ler o ficheiro
                 }
 
                 shMemory -> authProcTime = number;
+
                 lineId++;
 
                 break;
@@ -158,6 +167,7 @@ int readConfigFile(char *fileName) {   //Método responsável por ler o ficheiro
                 }
 
                 shMemory -> maxVideoWait = number;
+
                 lineId++;
                 
                 break;
@@ -172,6 +182,7 @@ int readConfigFile(char *fileName) {   //Método responsável por ler o ficheiro
                 }
 
                 shMemory -> maxOthersWait = number;
+
                 lineId++;
 
                 break;
@@ -276,214 +287,141 @@ void createProcess(void (*functionProcess) (void*), void *args) {   //Método re
     }
 }
 
-void initializeMessageQueue() {   //Método responsável por inicializar a message queue.
-    /*
-    key_t key = ftok("msgfile", 'A');
-
-    int msgq_id = msgget(key, 0666 | IPC_CREAT);
-    */
-}
-
-int addVideoQueue(char *fdBuffer) {   //Método responsável por adicionar à video streaming queue.
-    int auxQp;
-
-    sem_wait(shmSemaphore);   //Semáforo para aceder à shared memory.
-    auxQp = shMemory->queuePos;
-    sem_post(shmSemaphore);
-    
-    if ((queueBackVideo + 1) % (auxQp) == queueFrontVideo) {
-        writeLogFile("MESSAGE NOT ADDED: VIDEO STREAMING QUEUE MAX SIZE WAS REACHED");
-
-        return 1;
-    } 
-    
-    else {
-        sem_wait(videoQueueSemaphore);   //Semáforo para aceder à video streaming queue.
-        strncpy(videoQueue[queueBackVideo], fdBuffer, sizeof(videoQueue[queueBackVideo]));
-        sem_post(videoQueueSemaphore);
-
-        //printf("%s - %s\n", videoQueue[queueBackVideo], videoQueue[0]);   //Retirar. Apenas verifica se foi adicionar corretamente à queue.
-        //fflush(stdout);
-
-        queueBackOther = (queueBackOther + 1) % (auxQp + 1);
-    }
-
-    return 0;
-}
-
-int addOtherQueue(char *fdBuffer) {   //Método responsável por adicionar à other services queue.
-    int auxQp;
-    
-    sem_wait(shmSemaphore);   //Semáforo para aceder à shared memory.
-    auxQp = shMemory->queuePos;
-    sem_post(shmSemaphore);
-    
-    if ((queueBackOther + 1) % auxQp == queueFrontOther) {
-        writeLogFile("MESSAGE NOT ADDED: OTHER SERVICES QUEUE MAX SIZE WAS REACHED");
-
-        return 1;
-    } 
-    
-    else {
-        sem_wait(otherQueueSemaphore);   //Semáforo para aceder à other services queue.
-        strncpy(otherQueue[queueBackOther], fdBuffer, sizeof(otherQueue[queueBackOther]));
-        sem_post(otherQueueSemaphore);
-
-        //printf("%s - %s\n", otherQueue[queueBackOther], otherQueue[0]);   //Retirar. Apenas verifica se foi adicionar corretamente à queue.
-        //fflush(stdout);
-
-        queueBackOther = (queueBackOther + 1) % (auxQp + 1);
-    }
-
-    return 0;
-}
-
-char *getFromQueue(char* queue[100], sem_t *queue_sem) {   //Método responsável por retirar da queue.
-    sem_wait(queue_sem);
-
-    if (queue[0] == NULL) {   //A queue encontra-se vazia.
-        sem_post(queue_sem);
-
-        return NULL;
-    }
-
-    char *first = queue[0];
-
-    for (int i = 0; queue[i] != NULL; i++) {
-        queue[i] = queue[i + 1];
-    }
-
-    sem_post(queue_sem);
-
-    return first;
-}
-
 void* receiverFunction() {   //Método responsável por implementar a thread receiver.
+    char *userPipeDescriptor = "/tmp/userpipe";
+    char *backPipeDescriptor =  "/tmp/backpipe";
+
+    int userFd;
+    int backFd;
+    int maxFd;
+    char fdBuffer[128];
+
+    fd_set readFds;
+
+    mkfifo(userPipeDescriptor, 0666);
+    mkfifo(backPipeDescriptor, 0666);
+
+    userFd = open(userPipeDescriptor, O_RDONLY | O_NONBLOCK);
+    backFd = open(backPipeDescriptor, O_RDONLY | O_NONBLOCK);
+    if (userFd == -1 || backFd == -1) {
+        perror("Error while opening FIFO");
+
+        pthread_exit(NULL);
+
+        exit(1);
+    }
+
     writeLogFile("THREAD RECEIVER CREATED");
     fflush(stdout);
-    
-    int fdUserPipe = open(USER_PIPE, O_RDONLY | O_NONBLOCK);   //É aberto o named pipe USER_PIPE para leitura. Named pipe é criado no Authorization Request Manager.
 
-    if(fdUserPipe == -1){
-        perror("Error while opening BACK_PIPE");
-                        
-        exit(1);
-    }
+    int numUserFdMessages = 0;
 
-    int fdBackPipe = open(BACK_PIPE, O_RDONLY | O_NONBLOCK);   //É aberto o named pipe BACK_PIPE para leitura. Named pipe é criado no Authorization Request Manager.
-
-    if(fdBackPipe == -1){
-        perror("Error while opening BACK_PIPE");
-                        
-        exit(1);
-    }
-
-    int fdMax = (fdUserPipe > fdBackPipe) ? fdUserPipe : fdBackPipe;
+    maxFd = userFd > backFd ? userFd : backFd;
 
     while (1) {
-        fd_set read_fds;
-        FD_ZERO(&read_fds);
-        FD_SET(fdUserPipe, &read_fds);
-        FD_SET(fdBackPipe, &read_fds);
+        FD_ZERO(&readFds);
+        FD_SET(userFd, &readFds);
+        FD_SET(backFd, &readFds);
 
-        int activity = select(fdMax + 1, &read_fds, NULL, NULL, NULL);   // Use select() to wait for activity on pipes
+        struct timeval timeOut;
+        timeOut.tv_sec = 0;
+        timeOut.tv_usec = 1000000;   //Permite ao select ver atividade nas fifo de 100 em 100 ms.
+        
+        int newActivity = select(maxFd + 1, &readFds, NULL, NULL, &timeOut);
 
-        int verifyVideoAdd = 0;
-        //int verifyOtherAdd = 0;
+        if (newActivity < 0) {
+            perror("Error in select");
+            
+            pthread_exit(NULL);
 
-        if (activity == -1) {
-            perror("Error selecting pipe");
-
-            exit(EXIT_FAILURE);
+            exit(1);
         }
 
-        if (FD_ISSET(fdUserPipe, &read_fds)) {   //Name pipe USER_PIPE.
-            char fdBuffer[PIPE_BUF];
+        if (FD_ISSET(userFd, &readFds)) {
+            int bytesRead = read(userFd, fdBuffer, sizeof(fdBuffer) - 1);
 
-            ssize_t bytesRead = read(fdUserPipe, fdBuffer, sizeof(fdBuffer));
-            
-            if (bytesRead == -1) {
-                perror("Error reading from USER_PIPE");
-
-                exit(EXIT_FAILURE);
-            } 
-            
-            else if (bytesRead == 0) {
-                close(fdUserPipe);
-
-                fdUserPipe = -1;
-            }
-            
-            else {
-                int n1, n2;
-                char serviceToken[128];
-                
-                if(sscanf(fdBuffer, "%d#%d", &n1, &n2) == 2) {   //Mensagem de registo.
-                    // TODO registar user. Guardar valores na shared memory.
-                    printf("%s\n", fdBuffer);
+            if (bytesRead > 0) {
+                if (numUserFdMessages == 0) {   //A primeira mensagem de registo recebida pelo user pipe é a de registo do mobile user.
+                    printf("Register message: %s\n", fdBuffer);
                 }
                 
-                else if(sscanf(fdBuffer, "%d#%s#%d", &n1, serviceToken, &n2) == 2) {
-                    char *serviceType = strtok(serviceToken, "#");
-                    //int dataService = atoi(strtok(NULL, "#"));
-                    
-                    if (strcmp(serviceType, "VIDEO") == 0){   //Envia para a video streaming queue.
-                        verifyVideoAdd = addVideoQueue(fdBuffer);
-                        
-                        if (verifyVideoAdd == 1) {
-                            usleep(10000);
-                        }
-
-                        //printf("%s\n", fdBuffer);
-                        //fflush(stdout);
-                    }
-
-                    else {   //Envia para a other services queue.
-                        //verifyOtherAdd = addOtherQueue(fdBuffer);
-
-                        if (verifyVideoAdd == 1) {
-                            usleep(10000);
-                        }
-
-                        //printf("%s\n", fdBuffer);
-                        //fflush(stdout);
-                    }
-                }
-
                 else {
-                    perror("[RT] Wrong user request format");
+                    fdBuffer[bytesRead] = '\0';
+                
+                    printf("%s\n", fdBuffer);
+                    addToQueue(fdBuffer);
                 }
-            }
+
+                numUserFdMessages++;
+            } 
         }
 
-        if (fdBackPipe != -1 && FD_ISSET(fdBackPipe, &read_fds)) {   //Named pipe BACK_PIPE.
-            char fdBuffer[PIPE_BUF];
+        if (FD_ISSET(backFd, &readFds)) {
+            int bytesRead = read(backFd, fdBuffer, sizeof(fdBuffer) - 1);
 
-            ssize_t bytesRead = read(fdBackPipe, fdBuffer, sizeof(fdBuffer));
-            if (bytesRead == -1) {
-                perror("Error reading from BACK_PIPE");
-
-                exit(EXIT_FAILURE);
-            } 
-            
-            else if (bytesRead == 0) {
-                close(fdBackPipe);
-
-                fdBackPipe = -1;
-            }
-            
-            else {   //Envia para a other services queue.
-                addOtherQueue(fdBuffer);
+            if (bytesRead > 0) {
+                fdBuffer[bytesRead] = '\0';
 
                 printf("%s\n", fdBuffer);
-            }
+                addToQueue(fdBuffer);
+            } 
         }
     }
 
-    close(fdUserPipe);
-    close(fdBackPipe);
+    close(userFd);
+    close(backFd);
 
     pthread_exit(NULL);
+}
+
+void addToQueue(char *authOrder) {   //Método responsável por adicionar o pedido de autorização à respetiva queue.
+    char authOrderBck[128];
+    char *authOrderToken;
+    char authOrderType[128];
+
+    strcpy(authOrderBck, authOrder);   //De forma a não alterar o pedido de alteração original.
+
+    authOrderToken = strtok(authOrderBck, "#");   //Primeiro token (mobileUserId) não é necessário verificar aqui, somente o tipo de pedido de autorização, logo não guardamos este valor.
+    authOrderToken = strtok(NULL, "#");
+
+    strcpy(authOrderType, authOrderToken);   //Guardamos o tipo de pedido de autorização para verificar em qual queue guardar.
+ 
+    sem_wait(shmSemaphore);
+    int queueSize = shMemory -> queuePos;
+    sem_post(shmSemaphore);
+
+    if (strcmp(authOrderType, "VIDEO") == 0) {   //Pedido de autorização de vídeo, logo guardamos na videoQueue.
+        sem_wait(videoQueueSemaphore);
+
+        if ((queueBackVideo + 1) % queueSize == queueFrontVideo) {   //O pedido de autorização de vídeo não é adicionado.
+            writeLogFile("VIDEO AUTHORIZATION REQUEST NOT ADDED: THE QUEUE IS FULL");
+        }
+
+        else {   //O pedido de autorização de vídeo é adicionado.
+            strncpy(videoQueue[queueBackVideo], authOrder, sizeof(videoQueue[queueBackVideo]));
+
+            queueBackVideo = (queueBackVideo + 1) % queueSize;
+        }
+        printf("VerificaçãoADD:%s\n", videoQueue[0]);   //TODO Tem uns caracteres todos feios, está a ser mal guardado.
+        fflush(stdout);
+        sem_post(videoQueueSemaphore);
+    }
+
+    else {   //Pedido de autorização de outro tipo, logo guardamos na otherQueue.
+        sem_wait(otherQueueSemaphore);
+
+        if ((queueBackOther + 1) % queueSize == queueFrontOther) {   //O pedido de autorização de vídeo não é adicionado.
+            writeLogFile("OTHER AUTHORIZATION REQUEST NOT ADDED: THE QUEUE IS FULL");
+        }
+
+        else {   //O pedido de autorização de vídeo é adicionado.
+            strncpy(otherQueue[queueBackOther], authOrder, sizeof(otherQueue[queueBackOther]));
+
+            queueBackOther = (queueBackOther + 1) % queueSize;
+        }
+
+        sem_post(otherQueueSemaphore);
+    }
 }
 
 void* senderFunction() {   //Método responsável por implementar a thread sender.
@@ -528,67 +466,31 @@ void authorizationRequestManagerFunction() {   //Método responsável por implem
 
         writeLogFile("NAMED PIPE BACK_PIPE IS READY");
     }
+    
+    sem_wait(shmSemaphore);   //Acessa a memória partilhada de forma a obter o valor de queuePos e inicializar as queues.
 
-    for(int i = 0; i < N_AUTH_ENG; i++) {
-        if(pipe(fd_sender_pipes[i]) == -1) {
-            perror("Error while creating sender's unnamed pipe");
+    int queueSize = shMemory -> queuePos;
 
-            exit(1);
-        }
+    videoQueue = (char **) malloc(queueSize * sizeof(char *));
+    otherQueue = (char **) malloc(queueSize * sizeof(char *));
 
-        writeLogFile("UNNAMED PIPE IS READY");
+    for (int i = 0; i < queueSize; i++) {   //TODO Não esquecer e libertar esta memória.
+        videoQueue[i] = (char *) malloc(128 * sizeof(char));
+        otherQueue[i] = (char *) malloc(128 * sizeof(char));
     }
 
-    sem_wait(shmSemaphore);
-    int queueSize = shMemory -> queuePos;
-    int authEngines = shMemory -> maxAuthServers;
     sem_post(shmSemaphore);
 
-    videoQueue = malloc(sizeof(char[queueSize][100]));   //Inicializa a video streaming queue.
-    otherQueue = malloc(sizeof(char[queueSize][100]));   //Incializa a other services queue.
-
     initThreads();
-
-    for (int i = 0; i < authEngines; i++) {
-        int* authEngineId = malloc(sizeof(int));
-        *authEngineId = i;
-        printf("Imprime aqui\n");
-        createProcess(authorizationEngineWrapper, authEngineId);
-    }
     
-    for (int i = 0; i < authEngines; i++) {   //Espera que todos os processos filhos terminem.
-        wait(NULL);
-    }
-
     pthread_join(receiverThread, NULL);
     pthread_join(senderThread, NULL);
 }
 
-void authorizationEngineWrapper(void *arg) {   //Permite converter o pointeiro void para int.
-    int authEngineId = *(int *) arg;
-
-    authorizationEngine(authEngineId);
-}
-
-void authorizationEngine(int engineId) {   //Método responsável por implementar o Authorization Engine.
-    char initializeMessage[32];
-    snprintf(initializeMessage, sizeof(initializeMessage), "AUTHORIZATION_ENGINE %d READY", engineId);
-
-    writeLogFile(initializeMessage);
-    fflush(stdout);
-}
-
-void monitorEngineFunction() {
-    writeLogFile("PROCESS MONITOR_ENGINE CREATED");
-    fflush(stdout);
-}
-
 void authorizationRequestManager() {   //Método responsável por criar o processo Authorization Request Manager.
     createProcess(authorizationRequestManagerFunction, NULL);
-}
 
-void monitorEngine() {   //Método responsável por criar o processo Monitor Engine.
-    createProcess(monitorEngineFunction, NULL);
+    wait(NULL);   //Aguarda que os processos fiilhos terminem.
 }
 
 int main(int argc, char *argv[]) {
@@ -610,27 +512,7 @@ int main(int argc, char *argv[]) {
 
     writeLogFile("PROCESS SYSTEM MANAGER CREATED");
 
-    sem_wait(shmSemaphore);
-    int authEngines = shMemory -> maxAuthServers;
-    sem_post(shmSemaphore);
-
-    for (int i = 0; i < authEngines; i++) {
-        auth_eng_state[i] = true;
-    }
-
-    //sem_init(&videoQueueSemaphore, 0, 1);   //Inicializa o semáforo para a video streaming queue.
-    //sem_init(&otherQueueSemaphore, 0, 1);   //Inicializa o semáforo para a other services queue.
-
     authorizationRequestManager();
-
-    /*
-        pthread_join(receiver_thread, NULL);
-        pthread_join(sender_thread, NULL);
-
-        for(){
-            wait(NULL);
-        } for each of the processes?
-    */
 
     return 0;
 }
