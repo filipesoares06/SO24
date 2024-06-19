@@ -398,7 +398,7 @@ void addToQueue(char *authOrder) {   //Método responsável por adicionar o pedi
         }
 
         else {   //O pedido de autorização de vídeo é adicionado.
-            strncpy(videoQueue[queueBackVideo], authOrder, sizeof(videoQueue[queueBackVideo]));
+            strncpy(videoQueue[queueBackVideo], authOrder, 128);
 
             queueBackVideo = (queueBackVideo + 1) % queueSize;
         }
@@ -415,11 +415,12 @@ void addToQueue(char *authOrder) {   //Método responsável por adicionar o pedi
         }
 
         else {   //O pedido de autorização de vídeo é adicionado.
-            strncpy(otherQueue[queueBackOther], authOrder, sizeof(otherQueue[queueBackOther]));
+            strncpy(otherQueue[queueBackOther], authOrder, 128);
 
             queueBackOther = (queueBackOther + 1) % queueSize;
         }
-
+        printf("VerificaçãoADD:%s\n", otherQueue[0]);   //TODO Tem uns caracteres todos feios, está a ser mal guardado.
+        fflush(stdout);
         sem_post(otherQueueSemaphore);
     }
 }
