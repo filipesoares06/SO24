@@ -229,7 +229,7 @@ sharedMemory* attatchSharedMemory(int shmId) {   //Método responsável por atri
 }
 
 void initializeSharedMemory(int n_users) {   //Método responsável por inicializar a memória partilhada.
-    size_t shmSize = sizeof(shMemory) + sizeof(mobileUser) * n_users + 1;
+    size_t shmSize = sizeof(shMemory) + sizeof(mobileUser) * n_users;   //+1?
 
     shmId = createSharedMemory(shmSize);
     shMemory = attatchSharedMemory(shmId);
@@ -426,7 +426,7 @@ void addToQueue(char *authOrder) {   //Método responsável por adicionar o pedi
 }
 
 void* senderFunction() {   //Método responsável por implementar a thread sender.
-    writeLogFile("THREAD SENDER CREATED");
+    writeLogFile("THREAD SENDER CREATED"); 
     fflush(stdout);
     
     pthread_exit(NULL);
