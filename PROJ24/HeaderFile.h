@@ -29,6 +29,7 @@
 #define USER_PIPE "/tmp/userpipe"
 #define BACK_PIPE "/tmp/backpipe"
 
+#define MAX_PROCESSES 3
 #define MAX_ENGINES 6
 
 sem_t *mutexSemaphore;
@@ -61,6 +62,11 @@ typedef struct mobileUser {   //Estrutura que representa o Mobile User.
 typedef struct sharedMemory {
     mobileUser *mobileUsers;
     int ae_state[MAX_ENGINES]; // 0 = FREE; 1 = OCCUPIED
+
+
+    int pid_counter;
+    pid_t pids[MAX_PROCESSES];
+
 
     int queuePos;   //Variáveis que representam os valores do ficheiro de configurações.
     int maxAuthServers;
@@ -112,6 +118,7 @@ void monitorEngineFunction();
 
 char *getFromQueue(char* queue[100], sem_t *queue_sem);
 void cleanResources();
+void cleanup();
 void sigint(int signum);
 
 int random_number(int min, int max);

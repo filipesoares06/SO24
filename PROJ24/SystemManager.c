@@ -9,6 +9,37 @@ int queueBackVideo = 0;
 int queueFrontOther = 0;
 int queueBackOther = 0;
 
+void cleanup() {
+    pid_t currentPID = getpid();
+
+    sem_wait(shmSemaphore);
+    int counter = shMemory->pid_counter;
+    sem_post(shmSemaphore);
+    
+    sem_wait(shmSemaphore);
+    for (int i = 0; i < counter; i++) {
+        if (shMemory->pids[i] == currentPID) {
+            sem_post(shmSemaphore);
+            cleanupResources(i);  // Cleanup resources for the current process
+        }
+    }
+}
+
+void storePID(pid_t pid) {
+    sem_wait(shmSemaphore);
+    int counter = shMemory->pid_counter;
+    sem_post(shmSemaphore);
+    if (counter < MAX_PROCESSES) {
+        counter++;
+        sem_wait(shmSemaphore);
+        shMemory->pids[counter] = pid;
+        shMemory->pid_counter = counter;
+        sem_post(shmSemaphore);
+    } else {
+        writeLogFile("[SYSTEM] Maximum number of processes reached.");
+    }
+}
+
 void initializeMutexSemaphore() {   //Método responsável por inicializar um semáforo mutex
     sem_unlink("MUTEX");
     sem_unlink("SHM_SEM");
@@ -266,6 +297,7 @@ void initializeSharedMemory(int n_users) {   //Método responsável por iniciali
     shMemory -> totalVideoAuthReq = 0;
     shMemory -> totalMusicAuthReq = 0;
     shMemory -> totalSocialAuthReq = 0;
+    shMemory -> pid_counter = 0;
 
     shMemory->mobileUsers = (mobileUser *)((char *)shMemory + sizeof(sharedMemory));
 
@@ -281,6 +313,10 @@ void initializeSharedMemory(int n_users) {   //Método responsável por iniciali
         shMemory->mobileUsers[i].alertAux = 0;
     }
 
+    for (int i = 0; i < MAX_PROCESSES; i++) {
+        shMemory->pids[i] = -1;
+    }
+
     for(int i = 0; i < MAX_ENGINES; i++){
         shMemory->ae_state[i] = 0;
     }
@@ -288,7 +324,7 @@ void initializeSharedMemory(int n_users) {   //Método responsável por iniciali
     writeLogFile("SHARED MEMORY INITIALIZED");
 }
 
-void createProcess(void (*functionProcess) (void*), void *args) {   //Método responsável por criar um novo processo. 
+void createProcess(void (*functionProcess) (void*), void *args, bool store_id) {   //Método responsável por criar um novo processo. 
     pid_t pid = fork();   //Cria um novo processo.
 
     if (pid == -1) {   //Erro ao criar o processo.
@@ -298,6 +334,9 @@ void createProcess(void (*functionProcess) (void*), void *args) {   //Método re
     }
     
     else if (pid == 0) {   //Código executado no processo filho.
+        if(store_id)
+            storePID(pid);
+
         if (args) {   
             functionProcess(args);
             free(args);
@@ -308,6 +347,7 @@ void createProcess(void (*functionProcess) (void*), void *args) {   //Método re
             functionProcess(NULL);
         }
     }
+
 }
 
 void* receiverFunction() {   //Método responsável por implementar a thread receiver.
@@ -636,7 +676,7 @@ void authorizationRequestManagerFunction() {   //Método responsável por implem
 }
 
 void authorizationRequestManager() {   //Método responsável por criar o processo Authorization Request Manager.
-    createProcess(authorizationRequestManagerFunction, NULL);
+    createProcess(authorizationRequestManagerFunction, NULL, true);
 
     wait(NULL);   //Aguarda que os processos fiilhos terminem.
 }
@@ -649,6 +689,8 @@ int main(int argc, char *argv[]) {
 
         return -1;
     }
+
+    initializePIDs();
 
     initializeMutexSemaphore();
 

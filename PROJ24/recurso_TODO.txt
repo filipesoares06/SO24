@@ -1,5 +1,5 @@
 Memória partilhada -> Corrigir array que não é inicializado [DONE]
-TODO Busy Waits -> sender, authorization Engine.
+Busy Waits -> sender, authorization Engine. [DONE]
 Array de authorization engines > memória partilhada (Inicializar como os utilizadores) [DONE]
 TODO ctrl + c -> libertar tudo (queues etc) percorrer, fazer free e libertar
 TODO cada processo a libertar certas coisas, não todos ao memso tempo a libertar o mesmo.
