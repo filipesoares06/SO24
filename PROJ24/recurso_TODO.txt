@@ -2,21 +2,23 @@ Memória partilhada -> Corrigir array que não é inicializado [DONE]
 TODO Busy Waits -> sender, authorization Engine.
 Array de authorization engines > memória partilhada (Inicializar como os utilizadores) [DONE]
 TODO ctrl + c -> libertar tudo (queues etc) percorrer, fazer free e libertar
-TODO Um processo a libertar e cada vez, não todos ao memso tempo a libertar o mesmo.
+TODO cada processo a libertar certas coisas, não todos ao memso tempo a libertar o mesmo.
 
 
 TODO
-receiver
-verificar se a queue está cheia
+receiver 
+verificar se a queue está cheia (já estava?)
 
 
+counter semafores:
 criar semaforo tamanho inicial 0
 nao vai ser binario, vai contar o numero de mensagens na queue (alterado constantemente)
 fazer wait para bloquear ate que chegue uma mensage.
 
-sender
+sender [acho que está feito]:
 usar tambem semaforos nao binarios para os authengines
 criar array de estados no authengines
+
 
 
 mobileuser varios sleeps mais pequenos nos intervalos em que as mensagens têm de ser enviadas

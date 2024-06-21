@@ -22,18 +22,24 @@
 #include <sys/stat.h>
 #include <sys/msg.h>
 #include <sys/wait.h>
-#include <mqueue.h>
+//#include <mqueue.h>
 #include <sys/select.h>
 #include <limits.h>
 
 #define USER_PIPE "/tmp/userpipe"
 #define BACK_PIPE "/tmp/backpipe"
 
+#define MAX_ENGINES 6
+
 sem_t *mutexSemaphore;
 sem_t *shmSemaphore;
 sem_t *videoQueueSemaphore;
 sem_t *otherQueueSemaphore;
-sem_t *ae_states_semaphore;
+
+sem_t *ae_states_semaphore; // counter semaphore for ae engines, initialized at the same time of the shared memory number of auth engines
+
+sem_t *video_counter_sem;
+sem_t *other_counter_sem;
 
 typedef struct message {   //Estrutura que representa uma mensagem a enviar para o named pipe USER_PIPE com os pedidos de autorização.
     long mtype; // Alertas: 10 + user_id ; Stats: 200
@@ -54,6 +60,7 @@ typedef struct mobileUser {   //Estrutura que representa o Mobile User.
 
 typedef struct sharedMemory {
     mobileUser *mobileUsers;
+    int ae_state[MAX_ENGINES]; // 0 = FREE; 1 = OCCUPIED
 
     int queuePos;   //Variáveis que representam os valores do ficheiro de configurações.
     int maxAuthServers;
@@ -86,7 +93,7 @@ char **otherQueue;   //Queue para other services.
 
 int fd_sender_pipes[N_AUTH_ENG][2];
 
-bool auth_eng_state[N_AUTH_ENG];   //TRUE = FREE; FALSE = OCCUPIED;
+bool auth_eng_state[N_AUTH_ENG];   //0 = FREE; 1 = OCCUPIED;
 
 void initializeLogFile();
 void writeLogFile(char *strMessage);
@@ -103,9 +110,7 @@ void authorizationRequestManagerFunction();
 void authorizationEngine(int engineId);
 void monitorEngineFunction();
 
-char* getFromVideoQueue();
-char* getFromOtherQueue();
-
+char *getFromQueue(char* queue[100], sem_t *queue_sem);
 void cleanResources();
 void sigint(int signum);
 

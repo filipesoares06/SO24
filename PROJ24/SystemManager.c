@@ -50,6 +50,21 @@ void initializeMutexSemaphore() {   //Método responsável por inicializar um se
 
         exit(1);
     }
+
+    video_counter_sem = sem_open("video_counter_sem", O_CREAT, 0644, 0);
+    if (video_counter_sem == SEM_FAILED){
+        writeLogFile("[SM] VC_SEM Creation Failed\n");
+
+        exit(1);
+    }
+
+    other_counter_sem = sem_open("other_counter_sem", O_CREAT, 0644, 0);
+    if (other_counter_sem == SEM_FAILED){
+        writeLogFile("[SM] OC_SEM Creation Failed\n");
+
+        exit(1);
+    }
+
 }
 
 void initializeLogFile() {   //Método responsável por inicializar o ficheiro de log.
@@ -137,6 +152,10 @@ int readConfigFile(char *fileName) {   //Método responsável por ler o ficheiro
                 }
 
                 shMemory -> maxAuthServers = number;
+
+                for(int i = 0; i < number; i++){
+                    sem_post(ae_states_semaphore);
+                }
 
                 lineId++;
 
@@ -229,7 +248,7 @@ sharedMemory* attatchSharedMemory(int shmId) {   //Método responsável por atri
 }
 
 void initializeSharedMemory(int n_users) {   //Método responsável por inicializar a memória partilhada.
-    size_t shmSize = sizeof(shMemory) + sizeof(mobileUser) * n_users;   //+1?
+    size_t shmSize = sizeof(shMemory) + sizeof(mobileUser) * n_users + sizeof(int) * MAX_ENGINES;   //+1?
 
     shmId = createSharedMemory(shmSize);
     shMemory = attatchSharedMemory(shmId);
@@ -260,6 +279,10 @@ void initializeSharedMemory(int n_users) {   //Método responsável por iniciali
         shMemory->mobileUsers[i].reservedData = 0;
         shMemory->mobileUsers[i].usedData = 0;
         shMemory->mobileUsers[i].alertAux = 0;
+    }
+
+    for(int i = 0; i < MAX_ENGINES; i++){
+        shMemory->ae_state[i] = 0;
     }
 
     writeLogFile("SHARED MEMORY INITIALIZED");
@@ -400,6 +423,8 @@ void addToQueue(char *authOrder) {   //Método responsável por adicionar o pedi
         else {   //O pedido de autorização de vídeo é adicionado.
             strncpy(videoQueue[queueBackVideo], authOrder, 128);
 
+            sem_post(video_counter_sem);
+
             queueBackVideo = (queueBackVideo + 1) % queueSize;
         }
         printf("VerificaçãoADD:%s\n", videoQueue[0]);   //TODO Tem uns caracteres todos feios, está a ser mal guardado.
@@ -416,6 +441,8 @@ void addToQueue(char *authOrder) {   //Método responsável por adicionar o pedi
 
         else {   //O pedido de autorização de vídeo é adicionado.
             strncpy(otherQueue[queueBackOther], authOrder, 128);
+
+            sem_post(other_counter_sem);
 
             queueBackOther = (queueBackOther + 1) % queueSize;
         }
@@ -486,12 +513,67 @@ char* getFromOtherQueue() {   //Método responsável por retirar uma mensagem da
 }
 
 void* senderFunction() {   //Método responsável por implementar a thread sender.
-    writeLogFile("THREAD SENDER CREATED"); 
+    writeLogFile("THREAD SENDER CREATED"); // TODO acho que isto deve ficar fora da funcao nao?
     fflush(stdout);
-    
-    
+
+    sem_wait(shmSemaphore);
+    int numAuthEngines = shMemory->maxAuthServers;   // Meter semáforo.
+    sem_post(shmSemaphore);
+
+    char *queueMessage;
+
+    while (true) {
+        // Wait for a message in the video queue
+        sem_wait(video_counter_sem);
+        queueMessage = getFromVideoQueue(); // Video queue priority
+        bool aeFlag = false; // TRUE = FOUND AUTH ENGINE
+
+        if (queueMessage != NULL) {
+            sem_wait(ae_states_semaphore);
+            sem_wait(shmSemaphore);
+            for (int i = 0; i < numAuthEngines; i++) {
+                if (shMemory->ae_state[i] == 0) {
+                    shMemory->ae_state[i] == 1;
+                    sem_post(shMemory);
+                    write(fd_sender_pipes[i][1], queueMessage, sizeof(queueMessage));
+                    aeFlag = true;
+                    break;
+                }
+            }
+            sem_post(ae_states_semaphore);
+
+            if(!aeFlag)
+                sem_post(shmSemaphore);
+
+            if (aeFlag)
+                continue;
+        }
 
 
+        sem_wait(other_counter_sem);
+        queueMessage = getFromOtherQueue();
+
+        if (queueMessage != NULL) {
+            sem_wait(ae_states_semaphore);
+            sem_wait(shmSemaphore);
+            for (int i = 0; i < numAuthEngines; i++) {
+                if (shMemory->ae_state[i] == 0) {
+                    shMemory->ae_state[i] == 1;
+                    sem_post(shmSemaphore);
+                    write(fd_sender_pipes[i][1], queueMessage, sizeof(queueMessage));
+                    aeFlag = true;
+                    break; 
+                }
+            }
+            sem_post(ae_states_semaphore);
+
+            if(!aeFlag)
+                sem_post(shmSemaphore);
+
+            if (aeFlag)
+                continue;
+        }
+    }
 
 
     pthread_exit(NULL);
