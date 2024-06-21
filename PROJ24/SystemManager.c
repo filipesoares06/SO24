@@ -437,6 +437,167 @@ void* receiverFunction() {   //Método responsável por implementar a thread rec
     pthread_exit(NULL);
 }
 
+void authorization_engine(int engine_id) {   //Método responsável por implementar o Authorization Engine.
+    while (1) {   //Lê mensagens do sender pelo unnamed pipe.
+        char aux[1024];
+        int bytes_read = read(fd_sender_pipes[engine_id][0], &aux, sizeof(aux));
+
+        if (bytes_read > 0) {  
+            printf("AUX_ENGINE num %d: %s", engine_id, aux);
+            /*
+            int user_id;
+            int s;
+            int req_value;
+            int n2;
+            int n3;
+            
+            if (sscanf(aux, "%d#%d", &user_id, &req_value) == 2) {   //Efetua o registo do mobile user.
+                mobileUser aux_user;
+                aux_user.user_id = user_id;
+                aux_user.inicialPlafond = n2;
+
+                // aux_user.numAuthRequests = 0; aux_user.videoInterval = 0; aux_user.musicInterval = 0;
+
+                int n_users;
+
+                sem_wait(shmSemaphore);
+                n_users = shMemory->n_users;
+                sem_post(shmSemaphore);
+
+                for (int i = 0; i < n_users; i++) {
+                    sem_wait(shmSemaphore);
+
+                    if (&(shMemory->mobileUsers[i]) == NULL) {
+                        shMemory->mobileUsers[i] = aux_user;
+                        sem_post(shmSemaphore);
+#if DEBUG
+                        printf("inserted in shm %s\n", fdBuffer);
+#endif
+                        break;
+                    }
+
+                    sem_post(shmSemaphore);
+                }
+#if DEBUG
+                printf("%s\n", fdBuffer);
+#endif
+            }
+
+            else if (sscanf(aux, "%d#%s#%d", &user_id, &s, &req_value) == 3) {   //Atualiza pedidos e alertas.
+                int n_users;
+                bool found = false;
+
+                sem_wait(shmSemaphore);
+                n_users = shMemory->n_users;
+                sem_post(shmSemaphore);
+
+                for (int i = 0; i < n_users; i++) {
+                    sem_wait(shmSemaphore);
+
+                    if (shMemory->mobileUsers[i].user_id == user_id && shMemory->mobileUsers[i].usedData + req_value <= shMemory->mobileUsers[i].inicialPlafond) {
+                        shMemory->mobileUsers[i].usedData += req_value;
+
+                        if ((shMemory->mobileUsers[i].usedData / shMemory->mobileUsers[i].inicialPlafond) >= 0.8 && (shMemory->mobileUsers[i].usedData / shMemory->mobileUsers[i].inicialPlafond) < 0.9) {
+                            shMemory->mobileUsers[i].alertAux = 1;
+
+                            char alert[40];
+                            snprintf(alert, sizeof(alert), "USER %d REACHED 80%% of DATA USAGE\n", user_id);
+
+                            writeLogFile(alert);
+                        }
+
+                        else if ((shMemory->mobileUsers[i].usedData / shMemory->mobileUsers[i].inicialPlafond) >= 0.9 && (shMemory->mobileUsers[i].usedData / shMemory->mobileUsers[i].inicialPlafond) < 1.0) {
+                            shMemory->mobileUsers[i].alertAux = 2;
+
+                            char alert[40];
+                            snprintf(alert, sizeof(alert), "USER %d REACHED 90%% of DATA USAGE\n", user_id);
+
+                            writeLogFile(alert);
+                        }
+
+                        else if (shMemory->mobileUsers[i].usedData == shMemory->mobileUsers[i].inicialPlafond) {
+                            shMemory->mobileUsers[i].alertAux = 3;
+
+                            char alert[40];
+                            snprintf(alert, sizeof(alert), "USER %d REACHED 100%% of DATA USAGE\n", user_id);
+
+                            writeLogFile(alert);
+                        }
+                    }
+
+                    sem_post(shmSemaphore);
+
+                    if (found)
+                        break;
+                }
+            }
+
+            else if (sscanf(aux, "%d#[^\n]", &user_id, &s) == 2) {   //Efetua operações do BackOfficeUser.
+                if (strcmp(s, "data_stats")) {   //Comando data_stats.
+                    message msg;
+                    msg.mtype = 200;
+
+                    sem_wait(shmSemaphore);
+                    snprintf(msg.msg, 1024, "STATS (data|aut reqs)\nVIDEO: %d|%d\nMUSIC: %d|%d\nSOCIAL: %d|%d\n",
+                            shMemory->totalVideoData, shMemory->totalVideoAuthReq,
+                            shMemory->totalMusicData, shMemory->totalMusicAuthReq,
+                            shMemory->totalSocialData, shMemory->totalSocialAuthReq);
+                    sem_post(shmSemaphore);
+
+                    key_t key = ftok("msgfile", 'A');
+                    int msgq_id = msgget(key, 0666 | IPC_CREAT);
+
+                    if (msgq_id == -1) {
+                        perror("[AE] Error while opening Message Queue");
+
+                        exit(1);
+                    }
+
+                    if (msgsnd(msgq_id, &msg, 1024, 0) == -1) {
+                        perror("[AE] Error while sending message");
+
+                        exit(1);
+                    }
+#if DEBUG
+                    printf("[AE] Stats sent :)\n");
+#endif
+
+                    //writeLogFile("[AE] Stats Executed");
+                }
+
+                else if (strcmp(s, "reset"))
+                {
+                    sem_wait(shmSemaphore);
+                    shMemory->totalVideoData = 0;
+                    shMemory->totalVideoAuthReq = 0;
+                    shMemory->totalMusicData = 0;
+                    shMemory->totalMusicAuthReq = 0;
+                    shMemory->totalSocialData = 0;
+                    shMemory->totalSocialAuthReq = 0;
+                    sem_post(shmSemaphore);
+
+                    // writeLogFile("[AE] Reset executed");
+#if DEBUG
+                    printf("[AE] Reset done :)\n");
+#endif
+                }
+                */
+            }
+
+            // ERROR
+        else
+            {
+                perror("[AE] Error - Failed to parse the string\n");
+
+                exit(1);
+            }
+
+            sem_wait(shmSemaphore);
+            shMemory->ae_state[engine_id] = 0;
+            sem_post(shmSemaphore);
+    }
+}
+
 void addToQueue(char *authOrder) {   //Método responsável por adicionar o pedido de autorização à respetiva queue.
     char authOrderBck[128];
     char *authOrderToken;
