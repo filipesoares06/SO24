@@ -609,7 +609,7 @@ void addToQueue(char *authOrder) {   //Método responsável por adicionar o pedi
     authOrderToken = strtok(NULL, "#");
 
     strcpy(authOrderType, authOrderToken);   //Guardamos o tipo de pedido de autorização para verificar em qual queue guardar.
- 
+
     sem_wait(shmSemaphore);
     int queueSize = shMemory -> queuePos;
     sem_post(shmSemaphore);

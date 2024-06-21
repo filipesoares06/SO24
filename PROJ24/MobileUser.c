@@ -77,8 +77,9 @@ int main(int argc, char *argv[]) {
             }
 
             printf("%s\n", authOrderStr);
-
+            
             lastTime = currentTime;
+            usleep(10000);
         }
         
         if (elapsedTime % socialInterval == 0) {   //SOCIAL service.
@@ -96,6 +97,7 @@ int main(int argc, char *argv[]) {
             printf("%s\n", authOrderStr);
 
             lastTime = currentTime;
+            usleep(10000);
         } 
         
         if (elapsedTime % videoInterval == 0) {   //VIDEO service.
@@ -113,6 +115,7 @@ int main(int argc, char *argv[]) {
             printf("%s\n", authOrderStr);
 
             lastTime = currentTime;
+            usleep(10000);
         } 
         
         else {   //Avança para a próxima iteração caso não tenha decorrido tempo suficiente.
@@ -121,7 +124,7 @@ int main(int argc, char *argv[]) {
 
         requestCounter++;
 
-        usleep(5000000);   //Dorme durante 5s (A VM simplesmente não aguenta sem este sleep).
+        //usleep(5000000);   //Dorme durante 5s (A VM simplesmente não aguenta sem este sleep).
     }
 
     close(fd);
