@@ -443,7 +443,7 @@ void authorization_engine(int engine_id) {   //Método responsável por implemen
         int bytes_read = read(fd_sender_pipes[engine_id][0], &aux, sizeof(aux));
 
         if (bytes_read > 0) {  
-            printf("AUX_ENGINE num %d: %s", engine_id, aux);
+            printf("AUX_ENGINE num %d: %s\n", engine_id, aux);
             /*
             int user_id;
             int s;
