@@ -15,6 +15,22 @@ int random_number(int min, int max) {
     return min + rand() / (RAND_MAX / (max - min + 1) + 1);
 }
 
+void cleanup() {
+    pid_t currentPID = getpid();
+
+    sem_wait(shmSemaphore);
+    int counter = shMemory->pid_counter;
+    sem_post(shmSemaphore);
+    
+    sem_wait(shmSemaphore);
+    for (int i = 0; i < counter; i++) {
+        if (shMemory->pids[i] == currentPID) {
+            sem_post(shmSemaphore);
+            cleanupResources(i);  // Cleanup resources for the current process
+        }
+    }
+}
+
 void cleanResources(int i) { 
     // i sempre igual a 0 porque só temos um processo
     while (wait(NULL) > 0);

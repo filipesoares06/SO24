@@ -9,22 +9,6 @@ int queueBackVideo = 0;
 int queueFrontOther = 0;
 int queueBackOther = 0;
 
-void cleanup() {
-    pid_t currentPID = getpid();
-
-    sem_wait(shmSemaphore);
-    int counter = shMemory->pid_counter;
-    sem_post(shmSemaphore);
-    
-    sem_wait(shmSemaphore);
-    for (int i = 0; i < counter; i++) {
-        if (shMemory->pids[i] == currentPID) {
-            sem_post(shmSemaphore);
-            cleanupResources(i);  // Cleanup resources for the current process
-        }
-    }
-}
-
 void storePID(pid_t pid) {
     sem_wait(shmSemaphore);
     int counter = shMemory->pid_counter;
@@ -860,8 +844,6 @@ int main(int argc, char *argv[]) {
 
         return -1;
     }
-
-    initializePIDs();
 
     initializeMutexSemaphore();
 

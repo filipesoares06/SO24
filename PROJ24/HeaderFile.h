@@ -114,7 +114,7 @@ void authorizationEngine(int engineId);
 void monitorEngineFunction();
 
 char *getFromQueue(char* queue[100], sem_t *queue_sem);
-void cleanResources();
+void cleanResources(int i);
 void cleanup();
 void sigint(int signum);
 
