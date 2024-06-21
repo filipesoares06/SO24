@@ -279,7 +279,7 @@ sharedMemory* attatchSharedMemory(int shmId) {   //Método responsável por atri
 }
 
 void initializeSharedMemory(int n_users) {   //Método responsável por inicializar a memória partilhada.
-    size_t shmSize = sizeof(shMemory) + sizeof(mobileUser) * n_users + sizeof(int) * MAX_ENGINES;   //+1?
+    size_t shmSize = sizeof(shMemory) + sizeof(mobileUser) * n_users + sizeof(int) * N_AUTH_ENG;   //+1?
 
     shmId = createSharedMemory(shmSize);
     shMemory = attatchSharedMemory(shmId);
@@ -317,7 +317,7 @@ void initializeSharedMemory(int n_users) {   //Método responsável por iniciali
         shMemory->pids[i] = -1;
     }
 
-    for(int i = 0; i < MAX_ENGINES; i++){
+    for(int i = 0; i < N_AUTH_ENG; i++){
         shMemory->ae_state[i] = 0;
     }
 
@@ -653,6 +653,16 @@ void authorizationRequestManagerFunction() {   //Método responsável por implem
         }
 
         writeLogFile("NAMED PIPE BACK_PIPE IS READY");
+    }
+
+    for(int i = 0; i < N_AUTH_ENG; i++) {
+        if(pipe(fd_sender_pipes[i]) == -1) {
+            perror("Error while creating sender's unnamed pipe");
+
+            exit(1);
+        }
+
+        writeLogFile("UNNAMED PIPE IS READY");
     }
     
     sem_wait(shmSemaphore);   //Acessa a memória partilhada de forma a obter o valor de queuePos e inicializar as queues.

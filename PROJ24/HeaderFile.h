@@ -30,7 +30,6 @@
 #define BACK_PIPE "/tmp/backpipe"
 
 #define MAX_PROCESSES 3
-#define MAX_ENGINES 6
 
 sem_t *mutexSemaphore;
 sem_t *shmSemaphore;
@@ -61,7 +60,7 @@ typedef struct mobileUser {   //Estrutura que representa o Mobile User.
 
 typedef struct sharedMemory {
     mobileUser *mobileUsers;
-    int ae_state[MAX_ENGINES]; // 0 = FREE; 1 = OCCUPIED
+    int ae_state[N_AUTH_ENG]; // 0 = FREE; 1 = OCCUPIED
 
 
     int pid_counter;
@@ -98,8 +97,6 @@ char **videoQueue;   //Queue para video streaming services.
 char **otherQueue;   //Queue para other services.
 
 int fd_sender_pipes[N_AUTH_ENG][2];
-
-bool auth_eng_state[N_AUTH_ENG];   //0 = FREE; 1 = OCCUPIED;
 
 void initializeLogFile();
 void writeLogFile(char *strMessage);
