@@ -425,10 +425,75 @@ void addToQueue(char *authOrder) {   //Método responsável por adicionar o pedi
     }
 }
 
+char* getFromVideoQueue() {   //Método responsável por retirar uma mensagem da video queue.
+    char* videoMessage;
+
+    sem_wait(shmSemaphore);
+    int queueSize = shMemory -> queuePos;
+    sem_post(shmSemaphore);
+
+    sem_wait(videoQueueSemaphore);
+
+    if (queueFrontVideo != queueBackVideo) {
+        for (int i = queueFrontVideo; i != queueBackVideo; i = (i + 1) % queueSize) {
+            videoMessage = videoQueue[i];   //TODO potencialmente erro.
+
+            queueFrontVideo = (i + 1) % queueSize;
+
+            break;
+        }
+    }
+
+    if (videoMessage == NULL) {
+        videoMessage = videoQueue[queueFrontVideo];
+
+        queueFrontVideo = (queueFrontVideo + 1) % queueSize;
+    }
+
+    sem_post(videoQueueSemaphore);
+
+    return videoMessage;
+}
+
+char* getFromOtherQueue() {   //Método responsável por retirar uma mensagem da other queue.
+    char* otherMessage;
+
+    sem_wait(shmSemaphore);
+    int queueSize = shMemory -> queuePos;
+    sem_post(shmSemaphore);
+
+    sem_wait(otherQueueSemaphore);
+
+    if (queueFrontOther != queueBackOther) {
+        for (int i = queueFrontOther; i != queueBackOther; i = (i + 1) % queueSize) {
+            otherMessage = otherQueue[i];   //TODO potencialmente erro.
+
+            queueFrontOther = (i + 1) % queueSize;
+
+            break;
+        }
+    }
+
+    if (otherMessage == NULL) {
+        otherMessage = otherQueue[queueFrontOther];
+
+        queueFrontOther = (queueFrontOther + 1) % queueSize;
+    }
+
+    sem_post(otherQueueSemaphore);
+
+    return otherMessage;
+}
+
 void* senderFunction() {   //Método responsável por implementar a thread sender.
     writeLogFile("THREAD SENDER CREATED"); 
     fflush(stdout);
     
+    
+
+
+
+
     pthread_exit(NULL);
 }
 

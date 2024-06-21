@@ -103,7 +103,9 @@ void authorizationRequestManagerFunction();
 void authorizationEngine(int engineId);
 void monitorEngineFunction();
 
-char *getFromQueue(char* queue[100], sem_t *queue_sem);
+char* getFromVideoQueue();
+char* getFromOtherQueue();
+
 void cleanResources();
 void sigint(int signum);
 
